@@ -25,6 +25,8 @@ export const EVENTS = Object.freeze({
   // Progression
   KASTA_UP: 'kasta:up',
   DISTANCE_MILESTONE: 'distance:milestone',
+  IMPIAN_GATE: 'progress:impian-gate', // crossed 1000m → Mode Kos Impian
+  PROMPT: 'progress:prompt', // milestone story prompt fired
   // Collectibles (Phase 1+)
   COLLECT_COIN: 'collect:coin',
   COLLECT_ITEM: 'collect:item',

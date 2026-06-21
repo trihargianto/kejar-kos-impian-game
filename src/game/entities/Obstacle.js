@@ -50,6 +50,19 @@ const OBS_DEFS = [
   },
 ]
 
+// Kasta-twist obstacles, spawned by name (not in the random pool). Singgahsini's
+// vacuum chases the floor lane and is read as a JUMP threat. GDD §VI twist.
+const SPECIAL_DEFS = {
+  vacuum: {
+    id: 'vacuum',
+    zone: 'floor',
+    w: 56, h: 26,
+    fill: '#34495e',
+    label: 'VACUUM\n(JUMP)',
+    getY: (floorY) => floorY - 26,
+  },
+}
+
 export class Obstacle {
   constructor(def, game) {
     const S = game.scale
@@ -74,6 +87,12 @@ export class Obstacle {
   static random(game) {
     const def = OBS_DEFS[Math.floor(Math.random() * OBS_DEFS.length)]
     return new Obstacle(def, game)
+  }
+
+  // Build a named kasta-twist obstacle (e.g. 'vacuum'). Returns null if unknown.
+  static special(id, game) {
+    const def = SPECIAL_DEFS[id]
+    return def ? new Obstacle(def, game) : null
   }
 
   get bounds() {

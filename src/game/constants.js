@@ -43,8 +43,9 @@ export const SPAWN_INTERVAL_MIN = 1.1 // seconds between spawns (minimum, shrink
 export const SPAWN_INTERVAL_MAX = 2.2
 
 // ─── Kasta distance thresholds (meters) ──────────────────────────────────────
-// Source of truth lives in kasta.js (KASTA_DEFS); these named exports are kept
-// for backward compatibility with existing callers.
+// To tune WHEN a kasta begins, edit KASTA_METERS at the top of kasta.js — that's
+// the single knob. These named exports just re-expose the derived values for
+// backward compatibility with existing callers.
 import { KASTA_THRESHOLDS } from './kasta.js'
 export const KASTA_AC_THRESHOLD = KASTA_THRESHOLDS.AC // Kipas Angin → AC Standar
 export const KASTA_SINGGAH_THRESHOLD = KASTA_THRESHOLDS.SINGGAH // AC Standar → Singgahsini

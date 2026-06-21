@@ -15,6 +15,7 @@ import { START_LIVES } from '../../constants.js'
  * @property {number} mult
  * @property {string} kastaLabel
  * @property {number} dashCd
+ * @property {number} coins
  * @property {boolean} showControls
  */
 
@@ -39,6 +40,13 @@ export class Hud {
       fs(12),
       TOP + fs(22),
     )
+
+    // Coins (Recehan) — under the lives row.
+    if (snap.coins > 0) {
+      ctx.fillStyle = COLORS.gold
+      ctx.font = `bold ${fs(14)}px ${FONTS.mono}`
+      ctx.fillText(`Rp ${snap.coins}`, fs(12), TOP + fs(44))
+    }
 
     // Distance — top center (with multiplier if combo active)
     ctx.font = `bold ${fs(22)}px ${FONTS.mono}`

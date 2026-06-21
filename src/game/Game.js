@@ -9,6 +9,7 @@ import { Shake } from './core/Shake.js'
 import { SceneManager } from './core/SceneManager.js'
 import { EventBus, EVENTS } from './core/EventBus.js'
 import { AssetLoader } from './assets/AssetLoader.js'
+import { AudioSystem } from './systems/audio.js'
 import { StartScene } from './scenes/StartScene.js'
 import { PlayScene } from './scenes/PlayScene.js'
 import { GameOverScene } from './scenes/GameOverScene.js'
@@ -23,6 +24,8 @@ export class Game {
     this.shake = new Shake()
     this.events = new EventBus()
     this.assets = new AssetLoader()
+    // SFX subscribes to the event bus; placeholder WebAudio synth until Step 4.
+    this.audio = new AudioSystem(this.events)
     this.floats = []
     this.lastDist = 0
     this.safeTop = safeTop
@@ -59,6 +62,7 @@ export class Game {
   destroy() {
     cancelAnimationFrame(this._raf)
     this.input.destroy()
+    this.audio.destroy()
     this.events.clear()
   }
 

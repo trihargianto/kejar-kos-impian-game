@@ -57,7 +57,9 @@ function runningState() {
       }
       if (event === 'intent:dash') {
         if (p.dashCd > 0) return null
-        p.dashTimer = DASH_DURATION
+        // Lantai licin (AC Standar, GDD §VI): low friction → the dash burst
+        // carries longer before snap-back. friction defaults to 1 (no effect).
+        p.dashTimer = DASH_DURATION / Math.max(0.2, p.friction)
         p.dashCd = DASH_COOLDOWN
         p._snapTimer = 0
         p._lastFloats.push(p._float('DASH!', 50, 10, '#e67e22', 22))
@@ -191,6 +193,7 @@ export class Player {
     this.dashTimer = 0
     this.dashCd = 0
     this.invTimer = 0
+    this.friction = 1 // <1 = lantai licin (kasta twist); set by the scene each frame
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false
@@ -243,6 +246,7 @@ export class Player {
     this.dashTimer = 0
     this.dashCd = 0
     this.invTimer = 0
+    this.friction = 1
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false

@@ -31,6 +31,13 @@ export class SpawnDirector {
     const accelerated = Math.max(0.5, base - dist * 0.00012)
     this.timer = accelerated * (kasta.spawnIntervalMultiplier ?? 1)
 
+    // Kasta twist (GDD §VI): once the vacuum mechanic is live (Singgahsini+),
+    // a slice of spawns become the floor-chasing robot vacuum.
+    if (kasta.mechanics?.vacuum && Math.random() < 0.35) {
+      const v = Obstacle.special('vacuum', game)
+      if (v) return v
+    }
+
     return Obstacle.random(game)
   }
 }

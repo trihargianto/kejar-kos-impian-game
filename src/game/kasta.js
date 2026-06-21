@@ -7,11 +7,22 @@
 // switch chain. `KASTA_DEFS` is the source of truth; constants.js thresholds
 // are derived from it below.
 
+// ─── Kasta distance thresholds (meters) ──────────────────────────────────────
+// THE knob for when each tier begins — hoisted to the top so it's tunable at a
+// glance instead of buried in the records below. KASTA_DEFS reads from it, and
+// constants.js re-exports the derived KASTA_THRESHOLDS for legacy callers.
+export const KASTA_METERS = Object.freeze({
+  KIPAS_ANGIN: 0, // tutorial-safe start
+  AC_STANDAR: 300, // → lantai licin
+  SINGGAHSINI: 700, // → vacuum chaser
+  KOS_IMPIAN: 1000, // → endless Mode Kos Impian gate
+})
+
 export const KASTA_DEFS = Object.freeze([
   {
     id: 'kipas_angin',
     label: 'KIPAS ANGIN',
-    fromMeters: 0,
+    fromMeters: KASTA_METERS.KIPAS_ANGIN,
     bg: '#e8d5b0',
     speedMultiplier: 1.0,
     frictionMultiplier: 1.0,
@@ -23,7 +34,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'ac_standar',
     label: 'AC STANDAR',
-    fromMeters: 300,
+    fromMeters: KASTA_METERS.AC_STANDAR,
     bg: '#d4ecd4',
     speedMultiplier: 1.1,
     frictionMultiplier: 0.4, // lantai licin: less friction → momentum carries
@@ -34,7 +45,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'singgahsini',
     label: 'SINGGAHSINI',
-    fromMeters: 700,
+    fromMeters: KASTA_METERS.SINGGAHSINI,
     bg: '#d4e4f0',
     speedMultiplier: 1.25,
     frictionMultiplier: 1.0,
@@ -45,7 +56,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'kos_impian',
     label: 'KOS IMPIAN',
-    fromMeters: 1000,
+    fromMeters: KASTA_METERS.KOS_IMPIAN,
     bg: '#ede0ff',
     speedMultiplier: 1.5,
     frictionMultiplier: 1.0,
@@ -59,7 +70,7 @@ export const KASTA = Object.freeze(
   KASTA_DEFS.reduce((acc, def) => {
     acc[def.id.toUpperCase()] = def.label
     return acc
-  }, {}),
+  }, {})
 )
 
 // Distance (m) → active kasta definition (the highest tier whose fromMeters ≤ dist).
@@ -91,8 +102,9 @@ export function getNextKastaThreshold(dist) {
 }
 
 // Re-export thresholds for backward compatibility with constants.js consumers.
+// Reads KASTA_METERS directly — the single knob — not the records.
 export const KASTA_THRESHOLDS = Object.freeze({
-  AC: KASTA_DEFS[1].fromMeters,
-  SINGGAH: KASTA_DEFS[2].fromMeters,
-  IMPIAN: KASTA_DEFS[3].fromMeters,
+  AC: KASTA_METERS.AC_STANDAR,
+  SINGGAH: KASTA_METERS.SINGGAHSINI,
+  IMPIAN: KASTA_METERS.KOS_IMPIAN,
 })

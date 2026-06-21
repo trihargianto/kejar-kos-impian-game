@@ -5,6 +5,7 @@ export default function GameCanvas() {
   const canvasRef = useRef(null)
   const gameRef = useRef(null)
   const [ripples, setRipples] = useState([])
+  const rippleId = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -40,7 +41,7 @@ export default function GameCanvas() {
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     const touch = e.touches?.[0] ?? e
-    const id = Date.now() + Math.random()
+    const id = ++rippleId.current
     const x = touch.clientX - rect.left
     const y = touch.clientY - rect.top
     setRipples((r) => [...r, { x, y, id }])

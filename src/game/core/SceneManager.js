@@ -14,6 +14,9 @@ export class SceneManager {
     this.scenes = {}
     this.current = null
     this.currentName = null
+    // Optional callback invoked after every successful transition.
+    // Signature: (name: string, prev: string|null) => void
+    this.onTransition = null
   }
 
   register(name, scene) {
@@ -24,10 +27,12 @@ export class SceneManager {
   go(name) {
     const next = this.scenes[name]
     if (!next) throw new Error(`Unknown scene: ${name}`)
+    const prev = this.currentName
     this.current?.exit?.()
     this.current = next
     this.currentName = name
     next.enter?.()
+    this.onTransition?.(name, prev)
   }
 
   update(dt) {

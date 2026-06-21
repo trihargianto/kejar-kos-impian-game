@@ -33,11 +33,19 @@ export const SPEED_RAMP = 10 // extra px/s per 10m — world accelerates over ti
 export const NEAR_MISS_DISTANCE = 22 // px gap between player right edge and obstacle left edge
 export const COMBO_DECAY_TIME = 5.0 // seconds without a near-miss before combo resets
 
+// ─── Damage / lives ───────────────────────────────────────────────────────────
+export const START_LIVES = 3
+export const INVINCIBLE_TIME = 1.5 // seconds of i-frames after a hit
+export const DEATH_DELAY = 0.7 // seconds between final hit and game-over transition
+
 // ─── Obstacle spawning ────────────────────────────────────────────────────────
 export const SPAWN_INTERVAL_MIN = 1.1 // seconds between spawns (minimum, shrinks with distance)
 export const SPAWN_INTERVAL_MAX = 2.2
 
 // ─── Kasta distance thresholds (meters) ──────────────────────────────────────
-export const KASTA_AC_THRESHOLD = 300 // Kipas Angin → AC Standar
-export const KASTA_SINGGAH_THRESHOLD = 700 // AC Standar → Singgahsini
-export const KASTA_IMPIAN_THRESHOLD = 1000 // Singgahsini → Mode Kos Impian (endless)
+// Source of truth lives in kasta.js (KASTA_DEFS); these named exports are kept
+// for backward compatibility with existing callers.
+import { KASTA_THRESHOLDS } from './kasta.js'
+export const KASTA_AC_THRESHOLD = KASTA_THRESHOLDS.AC // Kipas Angin → AC Standar
+export const KASTA_SINGGAH_THRESHOLD = KASTA_THRESHOLDS.SINGGAH // AC Standar → Singgahsini
+export const KASTA_IMPIAN_THRESHOLD = KASTA_THRESHOLDS.IMPIAN // Singgahsini → Mode Kos Impian (endless)

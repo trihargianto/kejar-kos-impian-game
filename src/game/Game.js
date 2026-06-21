@@ -7,6 +7,8 @@ import { COLORS } from './theme.js'
 import { Input } from './core/Input.js'
 import { Shake } from './core/Shake.js'
 import { SceneManager } from './core/SceneManager.js'
+import { EventBus, EVENTS } from './core/EventBus.js'
+import { AssetLoader } from './assets/AssetLoader.js'
 import { StartScene } from './scenes/StartScene.js'
 import { PlayScene } from './scenes/PlayScene.js'
 import { GameOverScene } from './scenes/GameOverScene.js'
@@ -19,6 +21,8 @@ export class Game {
     this.ctx = canvas.getContext('2d')
     this.input = new Input(canvas)
     this.shake = new Shake()
+    this.events = new EventBus()
+    this.assets = new AssetLoader()
     this.floats = []
     this.lastDist = 0
     this.safeTop = safeTop
@@ -34,6 +38,8 @@ export class Game {
     this.ctx.scale(dpr, dpr)
 
     this._scenes = new SceneManager()
+    // SceneManager doesn't know about the event bus; emit transitions here.
+    this._scenes.onTransition = (name) => this.events.emit(EVENTS.SCENE_CHANGE, { scene: name })
     this._scenes
       .register('start', new StartScene(this))
       .register('play', new PlayScene(this))
@@ -53,6 +59,7 @@ export class Game {
   destroy() {
     cancelAnimationFrame(this._raf)
     this.input.destroy()
+    this.events.clear()
   }
 
   _loop(ts) {

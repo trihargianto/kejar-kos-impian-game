@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Game } from './Game'
-import { GAME_W, GAME_H } from './constants'
+import { GAME_WIDTH, GAME_HEIGHT } from './constants'
 
-const ASPECT = GAME_H / GAME_W
+const ASPECT = GAME_HEIGHT / GAME_WIDTH
 
 export default function GameCanvas() {
   const canvasRef = useRef(null)
@@ -30,8 +30,8 @@ export default function GameCanvas() {
       <div style={{
         position: 'relative',
         width: `min(100vw, calc(100vh / ${ASPECT}))`,
-        aspectRatio: `${GAME_W} / ${GAME_H}`,
-        maxWidth: `${GAME_W}px`,
+        aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}`,
+        maxWidth: `${GAME_WIDTH}px`,
         maxHeight: '100vh',
         boxShadow: '0 0 0 2px #333, 0 8px 40px rgba(0,0,0,0.6)',
         borderRadius: '12px',
@@ -39,8 +39,8 @@ export default function GameCanvas() {
       }}>
         <canvas
           ref={canvasRef}
-          width={GAME_W}
-          height={GAME_H}
+          width={GAME_WIDTH}
+          height={GAME_HEIGHT}
           style={{ display: 'block', width: '100%', height: '100%' }}
         />
       </div>

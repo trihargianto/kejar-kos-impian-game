@@ -1,12 +1,12 @@
 import {
-  GAME_W, GAME_H, FLOOR_Y,
-  PLAYER_X, PLAYER_W, PLAYER_H,
-  GRAVITY, JUMP_VEL, DOUBLE_JUMP_VEL,
-  SLIDE_DUR, DASH_VEL, DASH_DUR, DASH_CD,
-  BASE_SPD, SPD_RAMP,
-  NEAR_MISS_PX, COMBO_DECAY,
-  SPAWN_MIN, SPAWN_MAX,
-  KASTA_AC, KASTA_SINGGAH, KASTA_IMPIAN,
+  GAME_WIDTH, GAME_HEIGHT, FLOOR_Y,
+  PLAYER_X, PLAYER_WIDTH, PLAYER_HEIGHT,
+  GRAVITY, JUMP_VELOCITY, DOUBLE_JUMP_VELOCITY,
+  SLIDE_DURATION, DASH_VELOCITY, DASH_DURATION, DASH_COOLDOWN,
+  BASE_SPEED, SPEED_RAMP,
+  NEAR_MISS_DISTANCE, COMBO_DECAY_TIME,
+  SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX,
+  KASTA_AC_THRESHOLD, KASTA_SINGGAH_THRESHOLD, KASTA_IMPIAN_THRESHOLD,
 } from './constants.js'
 import { Input, Shake } from './engine.js'
 
@@ -25,12 +25,14 @@ const OBS_TYPES = [
   {
     id: 'jemuran', zone: 'ceiling', w: 64, h: 22,
     fill: '#9b59b6', label: 'JEMURAN\n(SLIDE)',
-    getY: () => FLOOR_Y - PLAYER_H - 4,
+    // Bottom of obstacle must be above slide hitbox top (FLOOR_Y - PLAYER_H/2)
+    // jemuran h=22, so getY must be <= FLOOR_Y - PLAYER_H/2 - 22 - clearance
+    getY: () => FLOOR_Y - PLAYER_H / 2 - 22 - 8,
   },
   {
     id: 'rak', zone: 'ceiling', w: 46, h: 34,
     fill: '#8e44ad', label: 'RAK\n(SLIDE)',
-    getY: () => FLOOR_Y - PLAYER_H - 10,
+    getY: () => FLOOR_Y - PLAYER_H / 2 - 34 - 8,
   },
   {
     id: 'pintu', zone: 'mid', w: 20, h: Math.round(GAME_H * 0.38),
@@ -259,8 +261,8 @@ export class Game {
           obsBot > playerTop && o.y < playerBot
 
         if (overlaps) {
-          if (this.dashing && o.zone === 'mid') {
-            // Dash through — no damage
+          if ((this.dashing || this._dashReturnTimer > 0) && o.zone === 'mid') {
+            // Dash through — no damage (exempt during both dash burst and snap-back)
           } else {
             this._takeDamage()
           }

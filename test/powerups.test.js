@@ -4,6 +4,7 @@ import { CollectibleDirector } from '../src/game/scenes/play/CollectibleSystem.j
 import { ComboSystem } from '../src/game/scenes/play/ComboSystem.js'
 import { Player } from '../src/game/entities/Player.js'
 import { SandalProjectile } from '../src/game/entities/SandalProjectile.js'
+import { PlayScene } from '../src/game/scenes/PlayScene.js'
 import { KASTA_DEFS } from '../src/game/kasta.js'
 
 const mkGame = (over = {}) => ({
@@ -237,5 +238,113 @@ describe('SandalProjectile', () => {
     const spin0 = s._spin
     s.update(0.1, game, [])
     expect(s._spin).toBeGreaterThan(spin0)
+  })
+})
+
+describe('PlayScene._throwSandal target-claim', () => {
+  // Minimal game stub that satisfies Player + SandalProjectile constructors.
+  // We bypass PlayScene.enter() (which needs floats + scene transitions) and
+  // poke scene state directly to drive _throwSandal in isolation.
+  const mkScene = () => {
+    const game = {
+      scale: 1,
+      width: 390,
+      floorY: 724,
+      events: { emit: () => {} },
+      floats: [],
+      shake: { trigger: () => {} },
+    }
+    const scene = new PlayScene(game)
+    scene.player.reset()
+    scene.obs = []
+    scene.sandals = []
+    scene.dist = 0
+    return scene
+  }
+
+  const mkObstacle = (x, w = 48) => ({
+    x,
+    y: 600,
+    w,
+    h: 48,
+    bounds: { x, y: 600, w, h: 48 },
+    passed: false,
+    nearMissed: false,
+  })
+
+  it('regression: rapid second throw does NOT lock onto an already-claimed obstacle', () => {
+    // Before the fix, both throws would target T1; sandal 1 destroyed T1 and
+    // sandal 2 expired into nothing — looked like "only 2 throws worked".
+    const scene = mkScene()
+    const t1 = mkObstacle(scene.player.x + scene.player.w + 100)
+    scene.obs.push(t1)
+    scene.player.sandals = 3
+
+    scene._throwSandal()
+    expect(scene.sandals).toHaveLength(1)
+    expect(scene.sandals[0].target).toBe(t1)
+    expect(scene.player.sandals).toBe(2)
+
+    // Second throw while sandal 1 is still in flight: T1 is claimed, no other
+    // targets, so the second throw must refund and NOT spawn a wasted sandal.
+    scene._throwSandal()
+    expect(scene.sandals).toHaveLength(1) // still just the first one
+    expect(scene.player.sandals).toBe(2) // refunded — ammo preserved
+  })
+
+  it('two throws at two distinct obstacles both spawn projectiles', () => {
+    const scene = mkScene()
+    const rightEdge = scene.player.x + scene.player.w
+    const t1 = mkObstacle(rightEdge + 100)
+    const t2 = mkObstacle(rightEdge + 250)
+    scene.obs.push(t1, t2)
+    scene.player.sandals = 3
+
+    scene._throwSandal()
+    scene._throwSandal()
+    expect(scene.sandals).toHaveLength(2)
+    expect(scene.sandals[0].target).toBe(t1)
+    expect(scene.sandals[1].target).toBe(t2) // different obstacle
+    expect(scene.player.sandals).toBe(1)
+  })
+
+  it('when the only obstacle is claimed and no other target exists, ammo is refunded', () => {
+    const scene = mkScene()
+    const t1 = mkObstacle(scene.player.x + scene.player.w + 100)
+    scene.obs.push(t1)
+    scene.player.sandals = 3
+
+    scene._throwSandal() // claims T1
+    expect(scene.player.sandals).toBe(2)
+
+    // Spam three more throws — all should refund, ammo unchanged.
+    scene._throwSandal()
+    scene._throwSandal()
+    scene._throwSandal()
+    expect(scene.sandals).toHaveLength(1)
+    expect(scene.player.sandals).toBe(2)
+  })
+
+  it('after an in-flight sandal dies, its target claim is released', () => {
+    // Natural integration check: when a sandal is removed from `this.sandals`
+    // (impact or expiry), its target should become targetable again on the
+    // next throw. The claim set is recomputed each throw from `this.sandals`,
+    // so removing the sandal is enough — no explicit un-claim needed.
+    const scene = mkScene()
+    const t1 = mkObstacle(scene.player.x + scene.player.w + 100)
+    scene.obs.push(t1)
+    scene.player.sandals = 3
+
+    scene._throwSandal()
+    expect(scene.player.sandals).toBe(2)
+
+    // Simulate sandal 1 dying (impact or expiry) and being reaped.
+    scene.sandals.length = 0
+
+    // Now T1 is targetable again — a new throw locks onto it without refund.
+    scene._throwSandal()
+    expect(scene.sandals).toHaveLength(1)
+    expect(scene.sandals[0].target).toBe(t1)
+    expect(scene.player.sandals).toBe(1)
   })
 })

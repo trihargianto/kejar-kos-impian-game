@@ -5,6 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['mag-myers-workers-determining.trycloudflare.com'],
+    allowedHosts: ['plot-mia-intensive-telecharger.trycloudflare.com'],
   },
 })

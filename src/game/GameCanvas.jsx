@@ -1,53 +1,78 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Game } from './Game.js'
-import { GAME_WIDTH, GAME_HEIGHT } from './constants'
-
-const ASPECT = GAME_HEIGHT / GAME_WIDTH
 
 export default function GameCanvas() {
   const canvasRef = useRef(null)
   const gameRef = useRef(null)
+  const [ripples, setRipples] = useState([])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || gameRef.current) return
-    gameRef.current = new Game(canvas)
+
+    // Set canvas resolution to physical pixels to avoid blur on HiDPI screens
+    const dpr = window.devicePixelRatio || 1
+    const w = Math.round(window.innerWidth * dpr)
+    const h = Math.round(window.innerHeight * dpr)
+    canvas.width = w
+    canvas.height = h
+
+    // Read CSS env() safe area insets via a temporary element
+    const probe = document.createElement('div')
+    probe.style.cssText =
+      'position:fixed;top:env(safe-area-inset-top);left:env(safe-area-inset-left);' +
+      'right:env(safe-area-inset-right);bottom:env(safe-area-inset-bottom);pointer-events:none;visibility:hidden'
+    document.body.appendChild(probe)
+    const cs = getComputedStyle(probe)
+    const safeTop = parseFloat(cs.top) || 0
+    const safeBottom = parseFloat(cs.bottom) || 0
+    document.body.removeChild(probe)
+
+    gameRef.current = new Game(canvas, { safeTop, safeBottom, dpr })
     return () => {
       gameRef.current?.destroy()
       gameRef.current = null
     }
   }, [])
 
+  const handleTap = useCallback((e) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const touch = e.touches?.[0] ?? e
+    const id = Date.now() + Math.random()
+    const x = touch.clientX - rect.left
+    const y = touch.clientY - rect.top
+    setRipples((r) => [...r, { x, y, id }])
+    setTimeout(() => setRipples((r) => r.filter((rpl) => rpl.id !== id)), 400)
+  }, [])
+
   return (
     <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1a1a2e',
-      }}
+      style={{ position: 'relative', width: '100dvw', height: '100dvh', overflow: 'hidden' }}
+      onTouchStart={handleTap}
+      onClick={handleTap}
     >
-      <div
-        style={{
-          position: 'relative',
-          width: `min(100vw, calc(100vh / ${ASPECT}))`,
-          aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}`,
-          maxWidth: `${GAME_WIDTH}px`,
-          maxHeight: '100vh',
-          boxShadow: '0 0 0 2px #333, 0 8px 40px rgba(0,0,0,0.6)',
-          borderRadius: '12px',
-          overflow: 'hidden',
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          style={{ display: 'block', width: '100%', height: '100%' }}
+      <canvas
+        ref={canvasRef}
+        style={{ display: 'block', width: '100%', height: '100%' }}
+      />
+      {ripples.map((r) => (
+        <div
+          key={r.id}
+          style={{
+            position: 'absolute',
+            left: r.x - 20,
+            top: r.y - 20,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.25)',
+            animation: 'ripple 0.4s ease-out forwards',
+            pointerEvents: 'none',
+          }}
         />
-      </div>
+      ))}
     </div>
   )
 }

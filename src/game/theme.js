@@ -37,5 +37,5 @@ export const FONTS = {
 
 // Pulse for blinking call-to-action text (0.4..1.0).
 export function ctaPulse(timeSec) {
-  return 0.7 + 0.3 * Math.sin(timeSec * 2.5)
+  return 0.4 + 0.6 * Math.abs(Math.sin(timeSec * 2.5))
 }

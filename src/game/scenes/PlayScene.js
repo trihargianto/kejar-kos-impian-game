@@ -1,16 +1,14 @@
 // ─── Play scene ───────────────────────────────────────────────────────────────
 // Core gameplay: spawning, physics, collision, combo, HUD.
 import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
   BASE_SPEED,
   SPEED_RAMP,
   NEAR_MISS_DISTANCE,
   COMBO_DECAY_TIME,
   SPAWN_INTERVAL_MIN,
   SPAWN_INTERVAL_MAX,
-  PLAYER_X,
   PLAYER_WIDTH,
+  PLAYER_X,
 } from '../constants.js'
 import { COLORS, FONTS, KASTA_BG } from '../theme.js'
 import { lerp, aabb } from '../core/utils.js'
@@ -20,14 +18,14 @@ import { Obstacle } from '../entities/Obstacle.js'
 import { FloatText } from '../entities/FloatText.js'
 import { getKasta, comboMultiplier, nearMissText } from '../systems/score.js'
 
-const INVINCIBLE_TIME = 1.5 // seconds of i-frames after a hit
-const DEATH_DELAY = 0.7 // seconds between final hit and game-over screen
+const INVINCIBLE_TIME = 1.5
+const DEATH_DELAY = 0.7
 const START_LIVES = 3
 
 export class PlayScene {
   constructor(game) {
     this.game = game
-    this.player = new Player()
+    this.player = new Player(game)
   }
 
   enter() {
@@ -36,13 +34,14 @@ export class PlayScene {
     this.lives = START_LIVES
     this.combo = 0
     this.mult = 1
-    this.comboTimer = 0 // time since last near-miss
+    this.comboTimer = 0
     this.alive = true
     this.deathTimer = 0
     this.obs = []
     this.spawnTimer = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
     this.player.reset()
     this.game.floats.length = 0
+    this.showControls = true
   }
 
   _spawnFloats(requests) {
@@ -53,7 +52,6 @@ export class PlayScene {
 
   update(dt) {
     if (!this.alive) {
-      // Wait out the death delay, then hand off to game over.
       this.deathTimer -= dt
       if (this.deathTimer <= 0) {
         this.game.lastDist = Math.floor(this.dist)
@@ -62,33 +60,43 @@ export class PlayScene {
       return
     }
 
-    // Speed ramp + distance accrual
     this.spd = BASE_SPEED + (this.dist / 10) * SPEED_RAMP
     this.dist += (this.spd / 200) * dt
 
     // ── Input → actions ─────────────────────────────────────────────────────────
     const input = this.game.input
-    if (input.anyPressed(INTENT.jump)) this._spawnFloats(this.player.jump())
-    if (input.anyPressed(INTENT.slide)) this._spawnFloats(this.player.slide())
-    if (input.anyPressed(INTENT.dash)) this._spawnFloats(this.player.dash())
+    if (input.anyPressed(INTENT.jump)) {
+      this.showControls = false
+      this._spawnFloats(this.player.jump())
+    }
+    if (input.anyPressed(INTENT.slide)) {
+      this.showControls = false
+      this._spawnFloats(this.player.slide())
+    }
+    if (input.anyPressed(INTENT.dash)) {
+      this.showControls = false
+      this._spawnFloats(this.player.dash())
+    }
 
     this.player.update(dt)
 
     // ── Spawning ────────────────────────────────────────────────────────────────
     this.spawnTimer -= dt
     if (this.spawnTimer <= 0) {
-      this.obs.push(Obstacle.random())
+      this.obs.push(Obstacle.random(this.game))
       const base = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
       this.spawnTimer = Math.max(0.5, base - this.dist * 0.00012)
     }
 
     // ── Obstacle movement, near-miss, collision ─────────────────────────────────
-    const playerRight = this.player.x + PLAYER_WIDTH
+    const S = this.game.scale
+    const nearMissDist = NEAR_MISS_DISTANCE * S
+    const playerRight = this.player.x + this.player.w
     for (let i = this.obs.length - 1; i >= 0; i--) {
       const o = this.obs[i]
-      o.update(dt, this.spd)
+      o.update(dt, this.spd * S)
 
-      this._checkNearMiss(o, playerRight)
+      this._checkNearMiss(o, playerRight, nearMissDist)
       this._checkCollision(o)
 
       if (o.offscreen) this.obs.splice(i, 1)
@@ -104,13 +112,13 @@ export class PlayScene {
     }
   }
 
-  _checkNearMiss(o, playerRight) {
+  _checkNearMiss(o, playerRight, nearMissDist) {
     if (o.passed || o.nearMissed) return
     const gap = o.x - playerRight
-    if (gap >= 0 && gap < NEAR_MISS_DISTANCE) {
+    if (gap >= 0 && gap < nearMissDist) {
       o.nearMissed = true
       this._onNearMiss()
-    } else if (gap < 0 && o.x + o.w < PLAYER_X - NEAR_MISS_DISTANCE * 2) {
+    } else if (gap < 0 && o.x + o.w < this.player.x - nearMissDist * 2) {
       o.passed = true
     }
   }
@@ -118,11 +126,8 @@ export class PlayScene {
   _checkCollision(o) {
     if (this.player.invincible) return
     if (!aabb(this.player.bounds, o.bounds)) return
-
-    // Snap-back is immune to everything; forward dash breaks mid doors.
     if (this.player.snappingBack) return
     if (this.player.dashing && o.zone === 'mid') return
-
     this._takeDamage()
   }
 
@@ -131,10 +136,11 @@ export class PlayScene {
     this.mult = comboMultiplier(this.combo)
     this.comboTimer = 0
     const p = this.player
+    const S = this.game.scale
     this.game.floats.push(
-      new FloatText(nearMissText(this.combo), p.x + PLAYER_WIDTH / 2, p.y - 40, COLORS.gold, 22)
+      new FloatText(nearMissText(this.combo), p.x + p.w / 2, p.y - 40 * S, COLORS.gold, Math.round(28 * S))
     )
-    this.game.shake.trigger(5, 0.18)
+    this.game.shake.trigger(5 * S, 0.18)
   }
 
   _takeDamage() {
@@ -142,9 +148,10 @@ export class PlayScene {
     this.combo = 0
     this.mult = 1
     this.player.hit(INVINCIBLE_TIME)
-    this.game.shake.trigger(12, 0.3)
+    const S = this.game.scale
+    this.game.shake.trigger(12 * S, 0.3)
     const p = this.player
-    this.game.floats.push(new FloatText('AW!', p.x + PLAYER_WIDTH / 2, p.y - 20, COLORS.accent, 20))
+    this.game.floats.push(new FloatText('AW!', p.x + p.w / 2, p.y - 20 * S, COLORS.accent, Math.round(28 * S)))
     if (this.lives <= 0) {
       this.alive = false
       this.deathTimer = DEATH_DELAY
@@ -153,9 +160,10 @@ export class PlayScene {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   draw(ctx) {
+    const { width: W, height: H } = this.game
     const kasta = getKasta(this.dist)
     ctx.fillStyle = KASTA_BG[kasta]
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    ctx.fillRect(0, 0, W, H)
     this.game.drawFloor(ctx)
 
     this.obs.forEach((o) => o.draw(ctx))
@@ -165,45 +173,54 @@ export class PlayScene {
   }
 
   _drawHud(ctx, kasta) {
-    // Distance + multiplier
+    const { width: W, height: H, scale: S, safeTop, safeBottom } = this.game
+    const TOP = safeTop + 8
+    const BOT = H - safeBottom - 8
+    const fs = (n) => Math.round(n * S)
+
+    // Lives — top left
     ctx.fillStyle = COLORS.ink
-    ctx.font = `bold 22px ${FONTS.mono}`
-    ctx.textAlign = 'center'
-    ctx.fillText(`${Math.floor(this.dist)}m  ×${this.mult}`, GAME_WIDTH / 2, 28)
-
-    // Lives
-    ctx.font = `22px ${FONTS.sans}`
+    ctx.font = `${fs(22)}px ${FONTS.sans}`
     ctx.textAlign = 'left'
-    ctx.fillText('♥'.repeat(this.lives) + '♡'.repeat(Math.max(0, START_LIVES - this.lives)), 12, 30)
+    ctx.fillText('♥'.repeat(this.lives) + '♡'.repeat(Math.max(0, START_LIVES - this.lives)), fs(12), TOP + fs(22))
 
-    // Combo
+    // Distance — top center
+    ctx.font = `bold ${fs(22)}px ${FONTS.mono}`
+    ctx.textAlign = 'center'
+    const scoreStr = this.combo > 0
+      ? `${Math.floor(this.dist)}m  ×${this.mult}`
+      : `${Math.floor(this.dist)}m`
+    ctx.fillText(scoreStr, W / 2, TOP + fs(22))
+
+    // Combo — below score
     if (this.combo > 0) {
       ctx.fillStyle = COLORS.accent
-      ctx.font = `bold 15px ${FONTS.mono}`
-      ctx.textAlign = 'center'
-      ctx.fillText(`COMBO x${this.combo}  ×${this.mult}`, GAME_WIDTH / 2, 54)
+      ctx.font = `bold ${fs(15)}px ${FONTS.mono}`
+      ctx.fillText(`COMBO x${this.combo}`, W / 2, TOP + fs(44))
     }
 
-    // Kasta
+    // Kasta — bottom left
     ctx.fillStyle = COLORS.muted
-    ctx.font = `12px ${FONTS.mono}`
+    ctx.font = `${fs(12)}px ${FONTS.mono}`
     ctx.textAlign = 'left'
-    ctx.fillText(`KASTA: ${kasta}`, 12, GAME_HEIGHT - 36)
+    ctx.fillText(`KASTA: ${kasta}`, fs(12), BOT - fs(18))
 
-    // Dash indicator
+    // Dash — bottom right
     ctx.textAlign = 'right'
     if (this.player.dashCd > 0) {
       ctx.fillStyle = COLORS.accent
-      ctx.fillText(`DASH: ${this.player.dashCd.toFixed(1)}s`, GAME_WIDTH - 12, GAME_HEIGHT - 36)
+      ctx.fillText(`DASH: ${this.player.dashCd.toFixed(1)}s`, W - fs(12), BOT - fs(18))
     } else {
       ctx.fillStyle = COLORS.green
-      ctx.fillText('DASH: READY', GAME_WIDTH - 12, GAME_HEIGHT - 36)
+      ctx.fillText('DASH: READY', W - fs(12), BOT - fs(18))
     }
 
-    // Controls hint
-    ctx.fillStyle = COLORS.faint
-    ctx.font = `10px ${FONTS.mono}`
-    ctx.textAlign = 'center'
-    ctx.fillText('TAP=Lompat  ↓=Slide  →=Dash', GAME_WIDTH / 2, GAME_HEIGHT - 14)
+    // Controls hint — only until first input
+    if (this.showControls) {
+      ctx.fillStyle = COLORS.faint
+      ctx.font = `${fs(10)}px ${FONTS.mono}`
+      ctx.textAlign = 'center'
+      ctx.fillText('TAP=Lompat  ↓=Slide  →=Dash', W / 2, BOT - fs(2))
+    }
   }
 }

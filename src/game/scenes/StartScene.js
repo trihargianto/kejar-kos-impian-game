@@ -1,5 +1,4 @@
 // ─── Start scene ──────────────────────────────────────────────────────────────
-import { GAME_WIDTH, GAME_HEIGHT } from '../constants.js'
 import { COLORS, FONTS, ctaPulse } from '../theme.js'
 import { INTENT } from '../core/Input.js'
 import { getHighScore } from '../systems/storage.js'
@@ -21,43 +20,44 @@ export class StartScene {
   }
 
   draw(ctx) {
+    const { width: W, height: H, scale: S } = this.game
     ctx.fillStyle = '#e8d5b0'
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    ctx.fillRect(0, 0, W, H)
     this.game.drawFloor(ctx)
 
     // Title
     ctx.fillStyle = COLORS.inkSoft
-    ctx.font = `bold 48px ${FONTS.mono}`
+    ctx.font = `bold ${Math.round(48 * S)}px ${FONTS.mono}`
     ctx.textAlign = 'center'
-    ctx.fillText('KEJAR KOS', GAME_WIDTH / 2, GAME_HEIGHT * 0.22)
-    ctx.fillText('IMPIAN', GAME_WIDTH / 2, GAME_HEIGHT * 0.22 + 56)
+    ctx.fillText('KEJAR KOS', W / 2, H * 0.22)
+    ctx.fillText('IMPIAN', W / 2, H * 0.22 + Math.round(56 * S))
 
     // Subtitle
-    ctx.font = `15px ${FONTS.sans}`
+    ctx.font = `${Math.round(15 * S)}px ${FONTS.sans}`
     ctx.fillStyle = COLORS.muted
-    ctx.fillText('Tanggal tua, dompet kering,', GAME_WIDTH / 2, GAME_HEIGHT * 0.44)
-    ctx.fillText('Ibu Kos gedor pintu...', GAME_WIDTH / 2, GAME_HEIGHT * 0.44 + 22)
-    ctx.fillText('Kabur ke kos impian!', GAME_WIDTH / 2, GAME_HEIGHT * 0.44 + 44)
+    ctx.fillText('Tanggal tua, dompet kering,', W / 2, H * 0.44)
+    ctx.fillText('Ibu Kos gedor pintu...', W / 2, H * 0.44 + Math.round(22 * S))
+    ctx.fillText('Kabur ke kos impian!', W / 2, H * 0.44 + Math.round(44 * S))
 
     // High score
     if (this.highScore > 0) {
       ctx.fillStyle = COLORS.accent
-      ctx.font = `bold 16px ${FONTS.mono}`
-      ctx.fillText(`REKOR: ${this.highScore}m`, GAME_WIDTH / 2, GAME_HEIGHT * 0.56)
+      ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
+      ctx.fillText(`REKOR: ${this.highScore}m`, W / 2, H * 0.56)
     }
 
     // CTA
     ctx.globalAlpha = ctaPulse(this.time)
     ctx.fillStyle = COLORS.accent
-    ctx.font = `bold 22px ${FONTS.sans}`
-    ctx.fillText('TAP / SPASI untuk mulai', GAME_WIDTH / 2, GAME_HEIGHT * 0.68)
+    ctx.font = `bold ${Math.round(22 * S)}px ${FONTS.sans}`
+    ctx.fillText('TAP / SPASI untuk mulai', W / 2, H * 0.68)
     ctx.globalAlpha = 1
 
     // Controls
-    ctx.font = `13px ${FONTS.mono}`
+    ctx.font = `${Math.round(13 * S)}px ${FONTS.mono}`
     ctx.fillStyle = COLORS.mutedSoft
-    ctx.fillText('TAP = Lompat', GAME_WIDTH / 2, GAME_HEIGHT * 0.8)
-    ctx.fillText('SWIPE ↓ = Slide', GAME_WIDTH / 2, GAME_HEIGHT * 0.8 + 20)
-    ctx.fillText('SWIPE → = Dash', GAME_WIDTH / 2, GAME_HEIGHT * 0.8 + 40)
+    ctx.fillText('TAP = Lompat', W / 2, H * 0.8)
+    ctx.fillText('SWIPE ↓ = Slide', W / 2, H * 0.8 + Math.round(20 * S))
+    ctx.fillText('SWIPE → = Dash', W / 2, H * 0.8 + Math.round(40 * S))
   }
 }

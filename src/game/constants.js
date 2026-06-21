@@ -8,8 +8,8 @@ export const FLOOR_Y = GAME_HEIGHT - 120
 
 // ─── Player ───────────────────────────────────────────────────────────────────
 export const PLAYER_X = 80 // fixed horizontal position (runner auto-scrolls world)
-export const PLAYER_WIDTH = 34
-export const PLAYER_HEIGHT = 50
+export const PLAYER_WIDTH = 52
+export const PLAYER_HEIGHT = 76
 
 // ─── Physics ──────────────────────────────────────────────────────────────────
 export const GRAVITY = 2400 // px/s² downward acceleration

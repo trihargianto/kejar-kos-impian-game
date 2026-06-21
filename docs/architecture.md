@@ -26,6 +26,8 @@ How the game is wired, from the React mount down to the per-frame systems.
 │   App.jsx → GameCanvas.jsx                                   │
 │   - sizes the <canvas> to physical pixels (dpr)             │
 │   - reads safe-area insets, draws tap ripples               │
+│   - renders the on-screen control cluster + pause button,   │
+│     driven by EventBus state (scene, ammo, pause)           │
 │   - constructs Game(canvas, { safeTop, safeBottom, dpr })   │
 └───────────────────────────┬─────────────────────────────────┘
                             │
@@ -45,7 +47,8 @@ How the game is wired, from the React mount down to the per-frame systems.
 ┌───────────────────────────▼─────────────────────────────────┐
 │ Per-frame systems (src/game/scenes/play/)                    │
 │   SpawnDirector · CollisionSystem · ComboSystem ·           │
-│   CollectibleSystem · PromptDirector · HorizonGoal · Hud    │
+│   CollectibleSystem · PromptDirector · HorizonGoal ·        │
+│   GroundPanel · Hud                                         │
 │ Entities (src/game/entities/)                                │
 │   Player (FSM) · Obstacle · Collectible · FloatText         │
 │ Shared systems (src/game/systems/)                           │
@@ -58,9 +61,8 @@ How the game is wired, from the React mount down to the per-frame systems.
 `Game._loop(ts)` runs once per animation frame:
 
 ```
-dt = clamp(now - last, MAX_DT)   // cap huge gaps (tab switch) to avoid tunneling
-
-update:
+if (!paused):                    // pause freezes the sim, loop keeps painting
+  dt = clamp(now - last, MAX_DT)  // cap huge gaps (tab switch) to avoid tunneling
   shake.update(dt)
   scenes.update(dt)              // active scene steps its world
   floats.forEach(update)         // float text drifts + fades
@@ -75,6 +77,12 @@ input.flush()                    // clear per-frame "just pressed" edges
 
 `dt` is in **seconds**. All velocities/timers are per-second so the sim is
 frame-rate independent.
+
+**Pause.** `Game.setPaused()` / `togglePause()` flip a `paused` flag: the loop
+keeps running (so the frozen frame stays painted) but skips all updates. Resume
+clears `_last` so the first frame doesn't integrate the whole paused span as one
+giant `dt`. Pausing flushes input and emits `EVENTS.PAUSE`; `GameCanvas` renders
+the top-right pause button + a tap-to-resume overlay off that event.
 
 ## Scenes
 
@@ -122,6 +130,22 @@ has time to land visually.
   obstacle; resolution is a circle-vs-AABB test in `CollectibleSystem`.
 - **FloatText** — short-lived rising/fading text for combos, hits, prompts.
 
+## Controls
+
+All in-play actions are **on-screen buttons** (a 2×2 grid in the bottom-right,
+below the floor line so they never cover incoming obstacles), not touch
+gestures. Each button calls `Input.pressVirtual('Button:Jump' | ...)`, which sets
+a one-frame edge; `INTENT` maps those virtual codes (plus desktop keyboard keys)
+to actions, so `PlayScene._handleInput` keeps querying intents and never knows a
+press came from a DOM button. Buttons fire on `pointerdown` — one event per
+press, so a fast tap-tap on JUMP becomes jump + double jump (a single tap can't
+double-count via a synthesized mouse event). Canvas touch only emits `Tap`, used
+by `INTENT.confirm` to advance the Start / GameOver menus, which have no buttons.
+
+The cluster and pause button render only during the `play` scene. `GameCanvas`
+mirrors the game's button-relevant state from the EventBus (scene, sandal ammo,
+pause) and polls `dashCd` via rAF for the DASH cooldown countdown.
+
 ## Systems (per-frame, under scenes/play/)
 
 | System              | Owns                                                            |
@@ -131,8 +155,9 @@ has time to land visually.
 | `ComboSystem`       | Near-miss count, per-kasta multiplier cap, decay timer          |
 | `CollectibleSystem` | Coin/item spawn, pickup, and the run's dream-kos profile        |
 | `PromptDirector`    | Distance-keyed milestone prompts, fired once each in order      |
-| `HorizonGoal`       | Skyline dream-kos building + progress bar (pure draw)           |
-| `Hud`               | Lives, score, combo, coins, kasta, dash cooldown (pure draw)    |
+| `HorizonGoal`       | Skyline dream-kos building + next-tier progress bar (pure draw)  |
+| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, coin badge, dream-kos tracker (tier + facility chips) — pure draw |
+| `Hud`               | Lives, score/distance, combo, power-ups (pure draw)             |
 
 ## Shared systems (cross-scene, under systems/)
 

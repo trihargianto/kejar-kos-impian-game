@@ -52,13 +52,18 @@ as a centered 9:16 frame, it is not full-screen by design).
 
 ## Controls
 
-| Verb  | Mobile  | Desktop       |
-| ----- | ------- | ------------- |
-| Jump  | Tap     | Space / ↑ / W |
-| Slide | Swipe ↓ | ↓ / S         |
-| Dash  | Swipe → | Shift / →     |
+On-screen buttons (a 2×2 cluster bottom-right, below the floor line) are the
+primary input; keyboard is a desktop fallback.
 
-Touch is the primary input; keyboard is a desktop fallback.
+| Verb  | Mobile        | Desktop       |
+| ----- | ------------- | ------------- |
+| Jump  | JUMP button   | Space / ↑ / W |
+| Slide | SLIDE button  | ↓ / S         |
+| Dash  | DASH button   | Shift / →     |
+| Throw | THROW button  | Q             |
+
+Tap JUMP again in the air for a double jump. DASH shows a cooldown but stays
+pressable; THROW is disabled without sandal ammo. A pause button sits top-right.
 
 ## Documentation
 

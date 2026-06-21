@@ -19,6 +19,8 @@ kejar-kos-impian-v2/
 │   ├── core.test.js           # EventBus, StateMachine, Pool
 │   ├── score.test.js          # Ranks, kasta switch points, combo multiplier
 │   ├── collision.test.js      # testObstacle outcomes
+│   ├── obstacles.test.js      # Obstacle zones / placement vs floorY
+│   ├── powerups.test.js       # Kopi/Sandal power-ups, sandal target-claim
 │   └── step2.test.js          # PromptDirector, dream-kos profile + matching
 └── src/
     ├── main.jsx               # React root render
@@ -31,9 +33,9 @@ kejar-kos-impian-v2/
 
 ```
 src/game/
-├── Game.js                    # Owns canvas, main loop, shared services, scenes
-├── GameCanvas.jsx             # React: sizes canvas, safe-area insets, tap ripples
-├── constants.js               # Tunable numbers (physics, speed, spawn, lives...)
+├── Game.js                    # Owns canvas, main loop, pause, shared services, scenes
+├── GameCanvas.jsx             # React: sizes canvas, safe-area, control buttons + pause
+├── constants.js               # Tunable numbers (physics, speed, spawn, lives, FLOOR_HEIGHT...)
 ├── kasta.js                   # Kasta tiers (KASTA_METERS knob + KASTA_DEFS data)
 ├── theme.js                   # Colors, fonts, per-kasta bg, CTA pulse helper
 │
@@ -41,7 +43,7 @@ src/game/
 │   ├── EventBus.js            # Tiny pub/sub + the EVENTS catalog
 │   ├── State.js               # Generic finite state machine
 │   ├── SceneManager.js        # Active-scene routing (enter/update/draw/exit)
-│   ├── Input.js               # Key + touch tracking; named INTENT map
+│   ├── Input.js               # Key + virtual-button edges; named INTENT map
 │   ├── Shake.js               # Decaying screen-shake offset
 │   ├── Pool.js                # Object pool (avoid GC churn)
 │   └── utils.js               # lerp, clamp, easeOut, roundRect, aabb
@@ -65,7 +67,8 @@ src/game/
 │       ├── ComboSystem.js     # Near-miss multiplier + decay
 │       ├── CollectibleSystem.js # Coin/item spawn, pickup, dream-kos profile
 │       ├── PromptDirector.js  # Milestone story prompts
-│       ├── HorizonGoal.js     # Skyline dream-kos building + progress bar
+│       ├── HorizonGoal.js     # Skyline dream-kos building + next-tier progress bar
+│       ├── GroundPanel.js     # Ground strip: parallax detail, coin badge, dream tracker
 │       └── Hud.js             # In-play HUD (pure draw)
 │
 └── systems/                   # Cross-scene logic
@@ -91,6 +94,10 @@ src/game/
 | Dream-kos listings            | `LISTINGS` in `systems/dreamKos.js`                        |
 | A sound effect                | `systems/audio.js`                                         |
 | HUD layout                    | `scenes/play/Hud.js`                                       |
+| Ground-strip panels           | `scenes/play/GroundPanel.js`                               |
+| Control buttons / pause / layout | `GameCanvas.jsx` (sizes via `BTN_SIZE`/`GRID_GAP`)      |
+| An action's input mapping     | `INTENT` in `core/Input.js`                                |
+| Ground / play-area height     | `FLOOR_HEIGHT` in `constants.js`                           |
 | A new game state/screen       | add a scene in `scenes/`, register it in `Game.js`         |
 | A new gameplay event          | add to `EVENTS` in `core/EventBus.js`, then emit/subscribe |
 

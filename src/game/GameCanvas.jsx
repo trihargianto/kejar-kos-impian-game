@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Game } from './Game'
+import { Game } from './Game.js'
 import { GAME_WIDTH, GAME_HEIGHT } from './constants'
 
 const ASPECT = GAME_HEIGHT / GAME_WIDTH

@@ -19,24 +19,28 @@ export default function GameCanvas() {
   }, [])
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#1a1a2e',
-    }}>
-      <div style={{
-        position: 'relative',
-        width: `min(100vw, calc(100vh / ${ASPECT}))`,
-        aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}`,
-        maxWidth: `${GAME_WIDTH}px`,
-        maxHeight: '100vh',
-        boxShadow: '0 0 0 2px #333, 0 8px 40px rgba(0,0,0,0.6)',
-        borderRadius: '12px',
-        overflow: 'hidden',
-      }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1a1a2e',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: `min(100vw, calc(100vh / ${ASPECT}))`,
+          aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}`,
+          maxWidth: `${GAME_WIDTH}px`,
+          maxHeight: '100vh',
+          boxShadow: '0 0 0 2px #333, 0 8px 40px rgba(0,0,0,0.6)',
+          borderRadius: '12px',
+          overflow: 'hidden',
+        }}
+      >
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}

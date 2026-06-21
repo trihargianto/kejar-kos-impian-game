@@ -1,42 +1,76 @@
 import {
-  GAME_WIDTH, GAME_HEIGHT, FLOOR_Y,
-  PLAYER_X, PLAYER_WIDTH, PLAYER_HEIGHT,
-  GRAVITY, JUMP_VELOCITY, DOUBLE_JUMP_VELOCITY,
-  SLIDE_DURATION, DASH_VELOCITY, DASH_DURATION, DASH_COOLDOWN,
-  BASE_SPEED, SPEED_RAMP,
-  NEAR_MISS_DISTANCE, COMBO_DECAY_TIME,
-  SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX,
-  KASTA_AC_THRESHOLD, KASTA_SINGGAH_THRESHOLD, KASTA_IMPIAN_THRESHOLD,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  FLOOR_Y,
+  PLAYER_X,
+  PLAYER_WIDTH,
+  PLAYER_HEIGHT,
+  GRAVITY,
+  JUMP_VELOCITY,
+  DOUBLE_JUMP_VELOCITY,
+  SLIDE_DURATION,
+  DASH_VELOCITY,
+  DASH_DURATION,
+  DASH_COOLDOWN,
+  BASE_SPEED,
+  SPEED_RAMP,
+  NEAR_MISS_DISTANCE,
+  COMBO_DECAY_TIME,
+  SPAWN_INTERVAL_MIN,
+  SPAWN_INTERVAL_MAX,
+  KASTA_AC_THRESHOLD,
+  KASTA_SINGGAH_THRESHOLD,
+  KASTA_IMPIAN_THRESHOLD,
 } from './constants.js'
 import { Input, Shake } from './engine.js'
 
 // ─── Obstacle catalogue ────────────────────────────────────────────────────
 const OBS_TYPES = [
   {
-    id: 'ember', zone: 'floor', w: 32, h: 32,
-    fill: '#3498db', label: 'EMBER\n(JUMP)',
+    id: 'ember',
+    zone: 'floor',
+    w: 32,
+    h: 32,
+    fill: '#3498db',
+    label: 'EMBER\n(JUMP)',
     getY: () => FLOOR_Y - 32,
   },
   {
-    id: 'kucing', zone: 'floor', w: 52, h: 26,
-    fill: '#f39c12', label: 'KUCING\n(JUMP)',
+    id: 'kucing',
+    zone: 'floor',
+    w: 52,
+    h: 26,
+    fill: '#f39c12',
+    label: 'KUCING\n(JUMP)',
     getY: () => FLOOR_Y - 26,
   },
   {
-    id: 'jemuran', zone: 'ceiling', w: 64, h: 22,
-    fill: '#9b59b6', label: 'JEMURAN\n(SLIDE)',
+    id: 'jemuran',
+    zone: 'ceiling',
+    w: 64,
+    h: 22,
+    fill: '#9b59b6',
+    label: 'JEMURAN\n(SLIDE)',
     // Bottom of obstacle must be above slide hitbox top (FLOOR_Y - PLAYER_H/2)
     // jemuran h=22, so getY must be <= FLOOR_Y - PLAYER_H/2 - 22 - clearance
     getY: () => FLOOR_Y - PLAYER_H / 2 - 22 - 8,
   },
   {
-    id: 'rak', zone: 'ceiling', w: 46, h: 34,
-    fill: '#8e44ad', label: 'RAK\n(SLIDE)',
+    id: 'rak',
+    zone: 'ceiling',
+    w: 46,
+    h: 34,
+    fill: '#8e44ad',
+    label: 'RAK\n(SLIDE)',
     getY: () => FLOOR_Y - PLAYER_H / 2 - 34 - 8,
   },
   {
-    id: 'pintu', zone: 'mid', w: 20, h: Math.round(GAME_H * 0.38),
-    fill: '#c0392b', label: 'PINTU\n(DASH)',
+    id: 'pintu',
+    zone: 'mid',
+    w: 20,
+    h: Math.round(GAME_H * 0.38),
+    fill: '#c0392b',
+    label: 'PINTU\n(DASH)',
     getY: () => FLOOR_Y - Math.round(GAME_H * 0.38) - 30,
   },
 ]
@@ -44,12 +78,21 @@ const OBS_TYPES = [
 // ─── Floating text ──────────────────────────────────────────────────────────
 class FloatText {
   constructor(text, x, y, color = '#f1c40f', size = 20) {
-    this.text = text; this.x = x; this.y = y
-    this.color = color; this.size = size
-    this.life = 1.0; this.maxLife = 1.0
+    this.text = text
+    this.x = x
+    this.y = y
+    this.color = color
+    this.size = size
+    this.life = 1.0
+    this.maxLife = 1.0
   }
-  update(dt) { this.life -= dt; this.y -= 60 * dt }
-  dead() { return this.life <= 0 }
+  update(dt) {
+    this.life -= dt
+    this.y -= 60 * dt
+  }
+  dead() {
+    return this.life <= 0
+  }
   draw(ctx) {
     ctx.save()
     ctx.globalAlpha = Math.max(0, this.life / this.maxLife)
@@ -91,7 +134,7 @@ export class Game {
     // Player
     this.px = PLAYER_X
     this.py = FLOOR_Y - PLAYER_H
-    this.pvy = 0           // vertical velocity
+    this.pvy = 0 // vertical velocity
     this.grounded = false
     this.jumps = 2
     this.sliding = false
@@ -136,8 +179,8 @@ export class Game {
       this._updateGameover()
     }
 
-    this.floats.forEach(f => f.update(dt))
-    this.floats = this.floats.filter(f => !f.dead())
+    this.floats.forEach((f) => f.update(dt))
+    this.floats = this.floats.filter((f) => !f.dead())
   }
 
   _updateStart() {
@@ -162,16 +205,19 @@ export class Game {
     this.dist += (this.spd / 200) * dt
 
     // ── Input ────────────────────────────────────────────────────────────────
-    const jumpPress = this.input.justPressed('Space') ||
+    const jumpPress =
+      this.input.justPressed('Space') ||
       this.input.justPressed('ArrowUp') ||
       this.input.justPressed('KeyW') ||
       this.input.justPressed('Tap')
 
-    const slidePress = this.input.justPressed('ArrowDown') ||
+    const slidePress =
+      this.input.justPressed('ArrowDown') ||
       this.input.justPressed('KeyS') ||
       this.input.justPressed('SwipeDown')
 
-    const dashPress = this.input.justPressed('ShiftLeft') ||
+    const dashPress =
+      this.input.justPressed('ShiftLeft') ||
       this.input.justPressed('ShiftRight') ||
       this.input.justPressed('ArrowRight') ||
       this.input.justPressed('SwipeRight')
@@ -257,8 +303,7 @@ export class Game {
         const obsRight = o.x + o.w
         const obsBot = o.y + o.h
         const overlaps =
-          obsRight > this.px && o.x < playerRight &&
-          obsBot > playerTop && o.y < playerBot
+          obsRight > this.px && o.x < playerRight && obsBot > playerTop && o.y < playerBot
 
         if (overlaps) {
           if ((this.dashing || this._dashReturnTimer > 0) && o.zone === 'mid') {
@@ -281,7 +326,10 @@ export class Game {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   _doJump() {
-    if (this.sliding) { this.sliding = false; return }
+    if (this.sliding) {
+      this.sliding = false
+      return
+    }
     if (this.jumps <= 0) return
     this.pvy = this.jumps === 2 ? JUMP_VEL : DOUBLE_JUMP_VEL
     this.jumps--
@@ -326,7 +374,9 @@ export class Game {
     if (this.lives <= 0) {
       this.alive = false
       this.gameoverDist = Math.floor(this.dist)
-      setTimeout(() => { this.state = 'gameover' }, 700)
+      setTimeout(() => {
+        this.state = 'gameover'
+      }, 700)
     }
   }
 
@@ -335,7 +385,8 @@ export class Game {
     this.obs.push({
       x: GAME_W + t.w,
       y: t.getY(),
-      w: t.w, h: t.h,
+      w: t.w,
+      h: t.h,
       fill: t.fill,
       label: t.label,
       zone: t.zone,
@@ -369,7 +420,7 @@ export class Game {
     }
 
     // Floating texts always on top
-    this.floats.forEach(f => f.draw(ctx))
+    this.floats.forEach((f) => f.draw(ctx))
 
     ctx.restore()
   }
@@ -405,9 +456,9 @@ export class Game {
     // Controls
     ctx.font = '13px monospace'
     ctx.fillStyle = '#777'
-    ctx.fillText('TAP = Lompat', GAME_W / 2, GAME_H * 0.80)
-    ctx.fillText('SWIPE ↓ = Slide', GAME_W / 2, GAME_H * 0.80 + 20)
-    ctx.fillText('SWIPE → = Dash', GAME_W / 2, GAME_H * 0.80 + 40)
+    ctx.fillText('TAP = Lompat', GAME_W / 2, GAME_H * 0.8)
+    ctx.fillText('SWIPE ↓ = Slide', GAME_W / 2, GAME_H * 0.8 + 20)
+    ctx.fillText('SWIPE → = Dash', GAME_W / 2, GAME_H * 0.8 + 40)
   }
 
   _drawPlay(ctx) {
@@ -420,7 +471,7 @@ export class Game {
     this._drawFloor(ctx)
 
     // Obstacles
-    this.obs.forEach(o => {
+    this.obs.forEach((o) => {
       ctx.fillStyle = o.fill
       roundRect(ctx, o.x, o.y, o.w, o.h, 4)
       ctx.fillStyle = 'rgba(0,0,0,0.18)'
@@ -534,7 +585,7 @@ export class Game {
     ctx.globalAlpha = pulse
     ctx.fillStyle = '#fff'
     ctx.font = '18px sans-serif'
-    ctx.fillText('Tap / Spasi untuk coba lagi', GAME_W / 2, GAME_H * 0.70)
+    ctx.fillText('Tap / Spasi untuk coba lagi', GAME_W / 2, GAME_H * 0.7)
     ctx.globalAlpha = 1
   }
 
@@ -549,8 +600,12 @@ export class Game {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function lerp(a, b, t) { return a + (b - a) * t }
-function easeOut(t) { return 1 - (1 - t) * (1 - t) }
+function lerp(a, b, t) {
+  return a + (b - a) * t
+}
+function easeOut(t) {
+  return 1 - (1 - t) * (1 - t)
+}
 
 function roundRect(ctx, x, y, w, h, r = 0) {
   ctx.beginPath()

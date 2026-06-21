@@ -51,9 +51,9 @@ const OBS_TYPES = [
     h: 22,
     fill: '#9b59b6',
     label: 'JEMURAN\n(SLIDE)',
-    // Bottom of obstacle must be above slide hitbox top (FLOOR_Y - PLAYER_H/2)
-    // jemuran h=22, so getY must be <= FLOOR_Y - PLAYER_H/2 - 22 - clearance
-    getY: () => FLOOR_Y - PLAYER_H / 2 - 22 - 8,
+    // Bottom of obstacle must be above slide hitbox top (FLOOR_Y - PLAYER_HEIGHT/2)
+    // jemuran h=22, so getY must be <= FLOOR_Y - PLAYER_HEIGHT/2 - 22 - clearance
+    getY: () => FLOOR_Y - PLAYER_HEIGHT / 2 - 22 - 8,
   },
   {
     id: 'rak',
@@ -62,16 +62,16 @@ const OBS_TYPES = [
     h: 34,
     fill: '#8e44ad',
     label: 'RAK\n(SLIDE)',
-    getY: () => FLOOR_Y - PLAYER_H / 2 - 34 - 8,
+    getY: () => FLOOR_Y - PLAYER_HEIGHT / 2 - 34 - 8,
   },
   {
     id: 'pintu',
     zone: 'mid',
     w: 20,
-    h: Math.round(GAME_H * 0.38),
+    h: Math.round(GAME_HEIGHT * 0.38),
     fill: '#c0392b',
     label: 'PINTU\n(DASH)',
-    getY: () => FLOOR_Y - Math.round(GAME_H * 0.38) - 30,
+    getY: () => FLOOR_Y - Math.round(GAME_HEIGHT * 0.38) - 30,
   },
 ]
 
@@ -124,7 +124,7 @@ export class Game {
   // ── Init / reset play state ────────────────────────────────────────────────
   _initPlay() {
     this.dist = 0
-    this.spd = BASE_SPD
+    this.spd = BASE_SPEED
     this.lives = 3
     this.combo = 0
     this.mult = 1
@@ -133,7 +133,7 @@ export class Game {
 
     // Player
     this.px = PLAYER_X
-    this.py = FLOOR_Y - PLAYER_H
+    this.py = FLOOR_Y - PLAYER_HEIGHT
     this.pvy = 0 // vertical velocity
     this.grounded = false
     this.jumps = 2
@@ -146,7 +146,7 @@ export class Game {
 
     // Obstacles
     this.obs = []
-    this.spawnTimer = lerp(SPAWN_MIN, SPAWN_MAX, Math.random())
+    this.spawnTimer = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
 
     this.floats = []
     this.gameoverDist = 0
@@ -201,7 +201,7 @@ export class Game {
     if (!this.alive) return
 
     // Speed ramp
-    this.spd = BASE_SPD + (this.dist / 10) * SPD_RAMP
+    this.spd = BASE_SPEED + (this.dist / 10) * SPEED_RAMP
     this.dist += (this.spd / 200) * dt
 
     // ── Input ────────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ export class Game {
     this.py += this.pvy * dt
 
     // Floor collision
-    const curH = this.sliding ? PLAYER_H / 2 : PLAYER_H
+    const curH = this.sliding ? PLAYER_HEIGHT / 2 : PLAYER_HEIGHT
     const floorTop = FLOOR_Y - curH
     if (this.py >= floorTop) {
       this.py = floorTop
@@ -251,7 +251,7 @@ export class Game {
     // ── Dash ─────────────────────────────────────────────────────────────────
     if (this.dashing) {
       this.dashTimer -= dt
-      this.px = Math.min(GAME_W - PLAYER_W - 20, this.px + DASH_VEL * dt)
+      this.px = Math.min(GAME_WIDTH - PLAYER_WIDTH - 20, this.px + DASH_VELOCITY * dt)
       if (this.dashTimer <= 0) {
         this.dashing = false
         // Animate back
@@ -275,13 +275,13 @@ export class Game {
     this.spawnTimer -= dt
     if (this.spawnTimer <= 0) {
       this._spawnObs()
-      const base = lerp(SPAWN_MIN, SPAWN_MAX, Math.random())
+      const base = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
       this.spawnTimer = Math.max(0.5, base - this.dist * 0.00012)
     }
 
-    const playerRight = this.px + PLAYER_W
+    const playerRight = this.px + PLAYER_WIDTH
     const playerTop = this.py
-    const playerBot = this.py + (this.sliding ? PLAYER_H / 2 : PLAYER_H)
+    const playerBot = this.py + (this.sliding ? PLAYER_HEIGHT / 2 : PLAYER_HEIGHT)
 
     for (let i = this.obs.length - 1; i >= 0; i--) {
       const o = this.obs[i]
@@ -290,10 +290,10 @@ export class Game {
       // Near-miss check (before collision to give credit)
       if (!o.passed && !o.nearMissed) {
         const gap = o.x - playerRight
-        if (gap >= 0 && gap < NEAR_MISS_PX) {
+        if (gap >= 0 && gap < NEAR_MISS_DISTANCE) {
           o.nearMissed = true
           this._onNearMiss()
-        } else if (gap < 0 && o.x + o.w < PLAYER_X - NEAR_MISS_PX * 2) {
+        } else if (gap < 0 && o.x + o.w < PLAYER_X - NEAR_MISS_DISTANCE * 2) {
           o.passed = true
         }
       }
@@ -318,7 +318,7 @@ export class Game {
     }
 
     // ── Combo decay ──────────────────────────────────────────────────────────
-    if (this.combo > 0 && performance.now() / 1000 - this.lastNear > COMBO_DECAY) {
+    if (this.combo > 0 && performance.now() / 1000 - this.lastNear > COMBO_DECAY_TIME) {
       this.combo = 0
       this.mult = 1
     }
@@ -331,25 +331,27 @@ export class Game {
       return
     }
     if (this.jumps <= 0) return
-    this.pvy = this.jumps === 2 ? JUMP_VEL : DOUBLE_JUMP_VEL
+    this.pvy = this.jumps === 2 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY
     this.jumps--
     this.grounded = false
     // Tiny jump puff
-    this.floats.push(new FloatText('↑', this.px + PLAYER_W / 2, this.py - 4, '#fff', 14))
+    this.floats.push(new FloatText('↑', this.px + PLAYER_WIDTH / 2, this.py - 4, '#fff', 14))
   }
 
   _doSlide() {
     if (!this.grounded || this.sliding) return
     this.sliding = true
-    this.slideTimer = SLIDE_DUR
-    this.floats.push(new FloatText('SLIDE!', this.px + PLAYER_W / 2, this.py - 16, '#9b59b6', 16))
+    this.slideTimer = SLIDE_DURATION
+    this.floats.push(
+      new FloatText('SLIDE!', this.px + PLAYER_WIDTH / 2, this.py - 16, '#9b59b6', 16)
+    )
   }
 
   _doDash() {
     if (this.dashing || this.dashCd > 0) return
     this.dashing = true
-    this.dashTimer = DASH_DUR
-    this.dashCd = DASH_CD
+    this.dashTimer = DASH_DURATION
+    this.dashCd = DASH_COOLDOWN
     this._dashReturnTimer = 0
     this.floats.push(new FloatText('DASH!', this.px + 50, this.py + 10, '#e67e22', 16))
   }
@@ -360,7 +362,7 @@ export class Game {
     this.lastNear = performance.now() / 1000
     const txts = ['Nyaris!', 'GILA!', 'DPO!']
     const t = this.combo <= 2 ? txts[0] : this.combo <= 6 ? txts[1] : txts[2]
-    this.floats.push(new FloatText(t, this.px + PLAYER_W / 2, this.py - 40, '#f1c40f', 22))
+    this.floats.push(new FloatText(t, this.px + PLAYER_WIDTH / 2, this.py - 40, '#f1c40f', 22))
     this.shake.trigger(5, 0.18)
   }
 
@@ -370,7 +372,7 @@ export class Game {
     this.mult = 1
     this.invTimer = 1.5
     this.shake.trigger(12, 0.3)
-    this.floats.push(new FloatText('AW!', this.px + PLAYER_W / 2, this.py - 20, '#e74c3c', 20))
+    this.floats.push(new FloatText('AW!', this.px + PLAYER_WIDTH / 2, this.py - 20, '#e74c3c', 20))
     if (this.lives <= 0) {
       this.alive = false
       this.gameoverDist = Math.floor(this.dist)
@@ -383,7 +385,7 @@ export class Game {
   _spawnObs() {
     const t = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)]
     this.obs.push({
-      x: GAME_W + t.w,
+      x: GAME_WIDTH + t.w,
       y: t.getY(),
       w: t.w,
       h: t.h,
@@ -428,44 +430,44 @@ export class Game {
   _drawStart(ctx) {
     // BG
     ctx.fillStyle = '#e8d5b0'
-    ctx.fillRect(0, 0, GAME_W, GAME_H)
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
     this._drawFloor(ctx)
 
     // Title
     ctx.fillStyle = '#222'
     ctx.font = 'bold 48px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText('KEJAR KOS', GAME_W / 2, GAME_H * 0.22)
-    ctx.fillText('IMPIAN', GAME_W / 2, GAME_H * 0.22 + 56)
+    ctx.fillText('KEJAR KOS', GAME_WIDTH / 2, GAME_HEIGHT * 0.22)
+    ctx.fillText('IMPIAN', GAME_WIDTH / 2, GAME_HEIGHT * 0.22 + 56)
 
     // Subtitle
     ctx.font = '15px sans-serif'
     ctx.fillStyle = '#555'
-    ctx.fillText('Tanggal tua, dompet kering,', GAME_W / 2, GAME_H * 0.44)
-    ctx.fillText('Ibu Kos gedor pintu...', GAME_W / 2, GAME_H * 0.44 + 22)
-    ctx.fillText('Kabur ke kos impian!', GAME_W / 2, GAME_H * 0.44 + 44)
+    ctx.fillText('Tanggal tua, dompet kering,', GAME_WIDTH / 2, GAME_HEIGHT * 0.44)
+    ctx.fillText('Ibu Kos gedor pintu...', GAME_WIDTH / 2, GAME_HEIGHT * 0.44 + 22)
+    ctx.fillText('Kabur ke kos impian!', GAME_WIDTH / 2, GAME_HEIGHT * 0.44 + 44)
 
     // CTA
     const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 400)
     ctx.globalAlpha = pulse
     ctx.fillStyle = '#e74c3c'
     ctx.font = 'bold 22px sans-serif'
-    ctx.fillText('TAP / SPASI untuk mulai', GAME_W / 2, GAME_H * 0.68)
+    ctx.fillText('TAP / SPASI untuk mulai', GAME_WIDTH / 2, GAME_HEIGHT * 0.68)
     ctx.globalAlpha = 1
 
     // Controls
     ctx.font = '13px monospace'
     ctx.fillStyle = '#777'
-    ctx.fillText('TAP = Lompat', GAME_W / 2, GAME_H * 0.8)
-    ctx.fillText('SWIPE ↓ = Slide', GAME_W / 2, GAME_H * 0.8 + 20)
-    ctx.fillText('SWIPE → = Dash', GAME_W / 2, GAME_H * 0.8 + 40)
+    ctx.fillText('TAP = Lompat', GAME_WIDTH / 2, GAME_HEIGHT * 0.8)
+    ctx.fillText('SWIPE ↓ = Slide', GAME_WIDTH / 2, GAME_HEIGHT * 0.8 + 20)
+    ctx.fillText('SWIPE → = Dash', GAME_WIDTH / 2, GAME_HEIGHT * 0.8 + 40)
   }
 
   _drawPlay(ctx) {
     // BG color per kasta
     const kasta = getKasta(this.dist)
     ctx.fillStyle = kastaBg(kasta)
-    ctx.fillRect(0, 0, GAME_W, GAME_H)
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
 
     // Scrolling floor stripe (parallax feel)
     this._drawFloor(ctx)
@@ -485,30 +487,30 @@ export class Game {
     })
 
     // Player
-    const curH = this.sliding ? PLAYER_H / 2 : PLAYER_H
-    const playerY = this.sliding ? FLOOR_Y - PLAYER_H / 2 : this.py
+    const curH = this.sliding ? PLAYER_HEIGHT / 2 : PLAYER_HEIGHT
+    const playerY = this.sliding ? FLOOR_Y - PLAYER_HEIGHT / 2 : this.py
     const showPlayer = this.invTimer <= 0 || Math.floor(this.invTimer * 12) % 2 === 0
 
     if (showPlayer) {
       // Body
       ctx.fillStyle = '#e74c3c'
-      roundRect(ctx, this.px, playerY, PLAYER_W, curH, 5)
+      roundRect(ctx, this.px, playerY, PLAYER_WIDTH, curH, 5)
       // Eyes
       if (!this.sliding) {
         ctx.fillStyle = '#fff'
         ctx.beginPath()
-        ctx.arc(this.px + PLAYER_W * 0.65, playerY + 14, 5, 0, Math.PI * 2)
+        ctx.arc(this.px + PLAYER_WIDTH * 0.65, playerY + 14, 5, 0, Math.PI * 2)
         ctx.fill()
         ctx.fillStyle = '#222'
         ctx.beginPath()
-        ctx.arc(this.px + PLAYER_W * 0.65 + 1.5, playerY + 15, 2.5, 0, Math.PI * 2)
+        ctx.arc(this.px + PLAYER_WIDTH * 0.65 + 1.5, playerY + 15, 2.5, 0, Math.PI * 2)
         ctx.fill()
       }
       // Dash trail
       if (this.dashing) {
         for (let i = 1; i <= 3; i++) {
           ctx.fillStyle = `rgba(231,76,60,${0.3 - i * 0.08})`
-          roundRect(ctx, this.px - i * 14, playerY + 4, PLAYER_W, curH - 8, 5)
+          roundRect(ctx, this.px - i * 14, playerY + 4, PLAYER_WIDTH, curH - 8, 5)
         }
       }
     }
@@ -517,14 +519,14 @@ export class Game {
     ctx.fillStyle = '#222'
     ctx.font = '10px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText('ANAK KOS', this.px + PLAYER_W / 2, this.py - 6)
+    ctx.fillText('ANAK KOS', this.px + PLAYER_WIDTH / 2, this.py - 6)
 
     // ── HUD ──────────────────────────────────────────────────────────────────
     // Distance + multiplier
     ctx.fillStyle = '#1a1a1a'
     ctx.font = 'bold 22px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText(`${Math.floor(this.dist)}m  ×${this.mult}`, GAME_W / 2, 28)
+    ctx.fillText(`${Math.floor(this.dist)}m  ×${this.mult}`, GAME_WIDTH / 2, 28)
 
     // Lives (hearts)
     ctx.font = '22px sans-serif'
@@ -536,66 +538,66 @@ export class Game {
       ctx.fillStyle = '#e74c3c'
       ctx.font = 'bold 15px monospace'
       ctx.textAlign = 'center'
-      ctx.fillText(`COMBO x${this.combo}  ×${this.mult}`, GAME_W / 2, 54)
+      ctx.fillText(`COMBO x${this.combo}  ×${this.mult}`, GAME_WIDTH / 2, 54)
     }
 
     // Kasta label
     ctx.fillStyle = '#555'
     ctx.font = '12px monospace'
     ctx.textAlign = 'left'
-    ctx.fillText(`KASTA: ${kasta}`, 12, GAME_H - 36)
+    ctx.fillText(`KASTA: ${kasta}`, 12, GAME_HEIGHT - 36)
 
     // Dash indicator
     ctx.textAlign = 'right'
     if (this.dashCd > 0) {
       ctx.fillStyle = '#e74c3c'
-      ctx.fillText(`DASH: ${this.dashCd.toFixed(1)}s`, GAME_W - 12, GAME_H - 36)
+      ctx.fillText(`DASH: ${this.dashCd.toFixed(1)}s`, GAME_WIDTH - 12, GAME_HEIGHT - 36)
     } else {
       ctx.fillStyle = '#27ae60'
-      ctx.fillText('DASH: READY', GAME_W - 12, GAME_H - 36)
+      ctx.fillText('DASH: READY', GAME_WIDTH - 12, GAME_HEIGHT - 36)
     }
 
     // Controls hint
     ctx.fillStyle = '#aaa'
     ctx.font = '10px monospace'
     ctx.textAlign = 'center'
-    ctx.fillText('TAP=Lompat  ↓=Slide  →=Dash', GAME_W / 2, GAME_H - 14)
+    ctx.fillText('TAP=Lompat  ↓=Slide  →=Dash', GAME_WIDTH / 2, GAME_HEIGHT - 14)
   }
 
   _drawGameover(ctx) {
     // Dim overlay
     ctx.fillStyle = '#1a1a2e'
-    ctx.fillRect(0, 0, GAME_W, GAME_H)
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
 
     ctx.textAlign = 'center'
     ctx.fillStyle = '#e74c3c'
     ctx.font = 'bold 44px monospace'
-    ctx.fillText('GAME OVER', GAME_W / 2, GAME_H * 0.28)
+    ctx.fillText('GAME OVER', GAME_WIDTH / 2, GAME_HEIGHT * 0.28)
 
     ctx.fillStyle = '#f1c40f'
     ctx.font = 'bold 28px monospace'
-    ctx.fillText(`${this.gameoverDist}m`, GAME_W / 2, GAME_H * 0.42)
+    ctx.fillText(`${this.gameoverDist}m`, GAME_WIDTH / 2, GAME_HEIGHT * 0.42)
 
     const rank = getRank(this.gameoverDist)
     ctx.fillStyle = '#eee'
     ctx.font = 'bold 20px sans-serif'
-    ctx.fillText(rank, GAME_W / 2, GAME_H * 0.52)
+    ctx.fillText(rank, GAME_WIDTH / 2, GAME_HEIGHT * 0.52)
 
     const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 400)
     ctx.globalAlpha = pulse
     ctx.fillStyle = '#fff'
     ctx.font = '18px sans-serif'
-    ctx.fillText('Tap / Spasi untuk coba lagi', GAME_W / 2, GAME_H * 0.7)
+    ctx.fillText('Tap / Spasi untuk coba lagi', GAME_WIDTH / 2, GAME_HEIGHT * 0.7)
     ctx.globalAlpha = 1
   }
 
   _drawFloor(ctx) {
     // Floor fill
     ctx.fillStyle = '#8b6914'
-    ctx.fillRect(0, FLOOR_Y, GAME_W, GAME_H - FLOOR_Y)
+    ctx.fillRect(0, FLOOR_Y, GAME_WIDTH, GAME_HEIGHT - FLOOR_Y)
     // Floor line
     ctx.fillStyle = '#5a4010'
-    ctx.fillRect(0, FLOOR_Y, GAME_W, 4)
+    ctx.fillRect(0, FLOOR_Y, GAME_WIDTH, 4)
   }
 }
 
@@ -614,9 +616,9 @@ function roundRect(ctx, x, y, w, h, r = 0) {
 }
 
 function getKasta(dist) {
-  if (dist < KASTA_AC) return 'KIPAS ANGIN'
-  if (dist < KASTA_SINGGAH) return 'AC STANDAR'
-  if (dist < KASTA_IMPIAN) return 'SINGGAHSINI'
+  if (dist < KASTA_AC_THRESHOLD) return 'KIPAS ANGIN'
+  if (dist < KASTA_SINGGAH_THRESHOLD) return 'AC STANDAR'
+  if (dist < KASTA_IMPIAN_THRESHOLD) return 'SINGGAHSINI'
   return 'KOS IMPIAN'
 }
 

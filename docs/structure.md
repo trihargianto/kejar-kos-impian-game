@@ -77,22 +77,22 @@ src/game/
 
 ## Where things go (cheat sheet)
 
-| You want to change... | Edit |
-| --- | --- |
-| A physics/tuning number | `constants.js` |
-| When a kasta starts | `KASTA_METERS` in `kasta.js` |
-| A kasta's twist / speed / cap | that record in `KASTA_DEFS` (`kasta.js`) |
-| Colors / fonts | `theme.js` |
-| A new obstacle type | `OBS_DEFS` (or `SPECIAL_DEFS`) in `entities/Obstacle.js` |
-| Spawn logic | `scenes/play/SpawnDirector.js` |
-| Combo rules | `scenes/play/ComboSystem.js` + `systems/score.js` |
-| A collectible / dream-kos tag | `entities/Collectible.js` + `CollectibleSystem.js` |
-| A milestone prompt | `PROMPTS` in `scenes/play/PromptDirector.js` |
-| Dream-kos listings | `LISTINGS` in `systems/dreamKos.js` |
-| A sound effect | `systems/audio.js` |
-| HUD layout | `scenes/play/Hud.js` |
-| A new game state/screen | add a scene in `scenes/`, register it in `Game.js` |
-| A new gameplay event | add to `EVENTS` in `core/EventBus.js`, then emit/subscribe |
+| You want to change...         | Edit                                                       |
+| ----------------------------- | ---------------------------------------------------------- |
+| A physics/tuning number       | `constants.js`                                             |
+| When a kasta starts           | `KASTA_METERS` in `kasta.js`                               |
+| A kasta's twist / speed / cap | that record in `KASTA_DEFS` (`kasta.js`)                   |
+| Colors / fonts                | `theme.js`                                                 |
+| A new obstacle type           | `OBS_DEFS` (or `SPECIAL_DEFS`) in `entities/Obstacle.js`   |
+| Spawn logic                   | `scenes/play/SpawnDirector.js`                             |
+| Combo rules                   | `scenes/play/ComboSystem.js` + `systems/score.js`          |
+| A collectible / dream-kos tag | `entities/Collectible.js` + `CollectibleSystem.js`         |
+| A milestone prompt            | `PROMPTS` in `scenes/play/PromptDirector.js`               |
+| Dream-kos listings            | `LISTINGS` in `systems/dreamKos.js`                        |
+| A sound effect                | `systems/audio.js`                                         |
+| HUD layout                    | `scenes/play/Hud.js`                                       |
+| A new game state/screen       | add a scene in `scenes/`, register it in `Game.js`         |
+| A new gameplay event          | add to `EVENTS` in `core/EventBus.js`, then emit/subscribe |
 
 ## File-size discipline
 

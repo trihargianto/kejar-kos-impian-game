@@ -82,10 +82,10 @@ A scene is an object with optional `enter()`, `update(dt)`, `draw(ctx)`,
 `exit()`. `SceneManager` routes to the active one; scenes transition by calling
 `game.go(name)`.
 
-| Scene | Role |
-| --- | --- |
-| `StartScene` | Title + opening; waits for first input → `play` |
-| `PlayScene` | The run loop orchestrator (see below) |
+| Scene           | Role                                                                   |
+| --------------- | ---------------------------------------------------------------------- |
+| `StartScene`    | Title + opening; waits for first input → `play`                        |
+| `PlayScene`     | The run loop orchestrator (see below)                                  |
 | `GameOverScene` | Final distance, comedic rank, **Kos Impian reveal**, high score, retry |
 
 ### PlayScene loop order
@@ -124,24 +124,24 @@ has time to land visually.
 
 ## Systems (per-frame, under scenes/play/)
 
-| System | Owns |
-| --- | --- |
-| `SpawnDirector` | Spawn cadence + obstacle stream; injects vacuum on vacuum-kasta |
-| `CollisionSystem` | Pure geometry: near-miss / collision / dash-break decisions |
-| `ComboSystem` | Near-miss count, per-kasta multiplier cap, decay timer |
-| `CollectibleSystem` | Coin/item spawn, pickup, and the run's dream-kos profile |
-| `PromptDirector` | Distance-keyed milestone prompts, fired once each in order |
-| `HorizonGoal` | Skyline dream-kos building + progress bar (pure draw) |
-| `Hud` | Lives, score, combo, coins, kasta, dash cooldown (pure draw) |
+| System              | Owns                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| `SpawnDirector`     | Spawn cadence + obstacle stream; injects vacuum on vacuum-kasta |
+| `CollisionSystem`   | Pure geometry: near-miss / collision / dash-break decisions     |
+| `ComboSystem`       | Near-miss count, per-kasta multiplier cap, decay timer          |
+| `CollectibleSystem` | Coin/item spawn, pickup, and the run's dream-kos profile        |
+| `PromptDirector`    | Distance-keyed milestone prompts, fired once each in order      |
+| `HorizonGoal`       | Skyline dream-kos building + progress bar (pure draw)           |
+| `Hud`               | Lives, score, combo, coins, kasta, dash cooldown (pure draw)    |
 
 ## Shared systems (cross-scene, under systems/)
 
-| Module | Owns |
-| --- | --- |
-| `score` | Pure scoring/progression: rank, kasta label, combo multiplier, near-miss text |
-| `storage` | High-score persistence via `localStorage`, guarded for private mode |
-| `audio` | WebAudio synth SFX subscribing to the EventBus (placeholder until real SFX) |
-| `dreamKos` | §IX reveal: matches a collected facility profile to a curated listing |
+| Module     | Owns                                                                          |
+| ---------- | ----------------------------------------------------------------------------- |
+| `score`    | Pure scoring/progression: rank, kasta label, combo multiplier, near-miss text |
+| `storage`  | High-score persistence via `localStorage`, guarded for private mode           |
+| `audio`    | WebAudio synth SFX subscribing to the EventBus (placeholder until real SFX)   |
+| `dreamKos` | §IX reveal: matches a collected facility profile to a curated listing         |
 
 ## Event flow
 
@@ -165,12 +165,12 @@ tier starts. Each record carries its `speedMultiplier`, `frictionMultiplier`,
 spawn rate, combo cap, and `mechanics` flags (`slippery`, `vacuum`, `endless`).
 Consumers call `getKastaDef(dist)`; no switch chains.
 
-| Tier | From | Twist |
-| --- | --- | --- |
-| Kipas Angin | 0m | Tutorial-safe |
-| AC Standar | 300m | Lantai licin (low friction, longer dash) |
-| Singgahsini | 700m | Vacuum chaser in the floor lane |
-| Kos Impian | 1000m | Endless gate; combo cap released |
+| Tier        | From  | Twist                                    |
+| ----------- | ----- | ---------------------------------------- |
+| Kipas Angin | 0m    | Tutorial-safe                            |
+| AC Standar  | 300m  | Lantai licin (low friction, longer dash) |
+| Singgahsini | 700m  | Vacuum chaser in the floor lane          |
+| Kos Impian  | 1000m | Endless gate; combo cap released         |
 
 ## Coordinate space & scaling
 

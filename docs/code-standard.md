@@ -8,14 +8,14 @@ already here.
 Prettier owns formatting — run `npm run format` before committing. Config
 (`.prettierrc`):
 
-| Rule | Value |
-| --- | --- |
-| Semicolons | **off** (`semi: false`) |
-| Quotes | single (`singleQuote: true`) |
-| Indent | 2 spaces, no tabs |
-| Trailing commas | `es5` |
-| Print width | 100 |
-| Arrow parens | always (`(x) => ...`) |
+| Rule            | Value                        |
+| --------------- | ---------------------------- |
+| Semicolons      | **off** (`semi: false`)      |
+| Quotes          | single (`singleQuote: true`) |
+| Indent          | 2 spaces, no tabs            |
+| Trailing commas | `es5`                        |
+| Print width     | 100                          |
+| Arrow parens    | always (`(x) => ...`)        |
 
 Linting is ESLint flat config (`eslint.config.js`): JS recommended +
 `react-hooks` + `react-refresh`, `dist/` ignored. Run `npm run lint`; keep it
@@ -31,14 +31,14 @@ clean (zero warnings).
 
 ## Naming
 
-| Kind | Convention | Example |
-| --- | --- | --- |
-| Classes | `PascalCase` | `SpawnDirector`, `ComboSystem` |
-| Functions / vars | `camelCase` | `getKastaDef`, `nearMissDist` |
-| Constants (tunables) | `UPPER_SNAKE` | `BASE_SPEED`, `KASTA_METERS` |
-| Files (classes) | `PascalCase.js` | `Player.js`, `HorizonGoal.js` |
-| Files (functions) | `camelCase.js` | `score.js`, `dreamKos.js`, `audio.js` |
-| Private-ish fields | leading `_` | `this._lastKastaId`, `_drainFloats()` |
+| Kind                 | Convention      | Example                               |
+| -------------------- | --------------- | ------------------------------------- |
+| Classes              | `PascalCase`    | `SpawnDirector`, `ComboSystem`        |
+| Functions / vars     | `camelCase`     | `getKastaDef`, `nearMissDist`         |
+| Constants (tunables) | `UPPER_SNAKE`   | `BASE_SPEED`, `KASTA_METERS`          |
+| Files (classes)      | `PascalCase.js` | `Player.js`, `HorizonGoal.js`         |
+| Files (functions)    | `camelCase.js`  | `score.js`, `dreamKos.js`, `audio.js` |
+| Private-ish fields   | leading `_`     | `this._lastKastaId`, `_drainFloats()` |
 
 Indonesian is used for player-facing strings and domain terms (kasta names,
 "Recehan", "Nyaris!"); code identifiers and comments are English.

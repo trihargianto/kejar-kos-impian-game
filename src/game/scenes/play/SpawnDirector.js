@@ -21,7 +21,7 @@ export class SpawnDirector {
 
   // Returns an Obstacle to spawn this frame, or null if not yet time.
   // `game` provides scale/floorY/width for the new obstacle.
-  // `dist` is the current distance (m), used to shrink intervals.
+  // `dist` is the current distance (m), used to shrink intervals + pick kasta.
   update(dt, game, dist) {
     this.timer -= dt
     if (this.timer > 0) return null
@@ -31,13 +31,18 @@ export class SpawnDirector {
     const accelerated = Math.max(0.5, base - dist * 0.00012)
     this.timer = accelerated * (kasta.spawnIntervalMultiplier ?? 1)
 
-    // Kasta twist (GDD §VI): once the vacuum mechanic is live (Singgahsini+),
-    // a slice of spawns become the floor-chasing robot vacuum.
+    // Kasta twists (GDD §VI): Singgahsini+ injects the vacuum (floor chaser)
+    // AND the smart-lock (mid-zone door that REQUIRES dash). Each roll is
+    // independent so a single spawn can be either, both feel (rare), or neither.
     if (kasta.mechanics?.vacuum && Math.random() < 0.35) {
       const v = Obstacle.special('vacuum', game)
       if (v) return v
     }
+    if (kasta.mechanics?.smartLock && Math.random() < 0.3) {
+      const sl = Obstacle.special('smartlock', game)
+      if (sl) return sl
+    }
 
-    return Obstacle.random(game)
+    return Obstacle.random(game, kasta.tier ?? 0)
   }
 }

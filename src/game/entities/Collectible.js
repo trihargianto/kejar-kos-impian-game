@@ -27,15 +27,19 @@ export class Collectible {
   /**
    * @param {'coin'|'item'} kind
    * @param {object} game        provides scale + width
-   * @param {number} designY     y in design space (390-wide baseline)
+   * @param {number} runtimeY    y in RUNTIME px (already scaled, anchored to
+   *                             game.floorY). NOT design space — the floor's
+   *                             runtime position is a height-ratio, not
+   *                             design*scale, so callers must pass a Y derived
+   *                             from game.floorY or coins drift off the player.
    * @param {object|null} tag     facility tag (item only); ignored for coins
    */
-  constructor(kind, game, designY, tag = null) {
+  constructor(kind, game, runtimeY, tag = null) {
     const S = game.scale
     this.kind = kind
     this.tag = tag
     this.r = Math.round((kind === 'coin' ? COIN_R : ITEM_R) * S)
-    this.y = Math.round(designY * S)
+    this.y = Math.round(runtimeY)
     this.x = game.width + this.r * 2
     this.collected = false
     this._bob = 0

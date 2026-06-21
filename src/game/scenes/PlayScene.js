@@ -167,6 +167,9 @@ export class PlayScene {
   // reward) + currency; items build the dream-kos profile for the §IX reveal.
   _updateCollectibles(dt) {
     const S = this.game.scale
+    // Spawn first (cadence + greed placement near upcoming obstacles), then
+    // scroll + resolve pickups. Spawn reads this.obs so coins land near traffic.
+    this.collectibles.spawn(dt, this.game, this.obs)
     const { coins, picked } = this.collectibles.update(dt, this.spd * S, this.player.bounds)
 
     if (coins > 0) {
@@ -175,7 +178,7 @@ export class PlayScene {
       this.combo.gain(kasta) // greed pays into the combo loop
       const p = this.player
       this.game.floats.push(
-        new FloatText(`+${coins}`, p.x + p.w / 2, p.y - 50 * S, COLORS.gold, Math.round(20 * S)),
+        new FloatText(`+${coins}`, p.x + p.w / 2, p.y - 50 * S, COLORS.gold, Math.round(20 * S))
       )
       this.game.events?.emit(EVENTS.COLLECT_COIN, { coins, total: this.coins })
     }
@@ -183,7 +186,7 @@ export class PlayScene {
     for (const tag of picked) {
       const p = this.player
       this.game.floats.push(
-        new FloatText(tag.label, p.x + p.w / 2, p.y - 70 * S, '#16a085', Math.round(18 * S)),
+        new FloatText(tag.label, p.x + p.w / 2, p.y - 70 * S, '#16a085', Math.round(18 * S))
       )
       this.game.events?.emit(EVENTS.COLLECT_ITEM, { tag: tag.id })
     }
@@ -195,13 +198,19 @@ export class PlayScene {
       this._lastKastaId = kasta.id
       this.game.events?.emit(EVENTS.KASTA_UP, { id: kasta.id, label: kasta.label })
       this.game.floats.push(
-        new FloatText(kasta.label, this.game.width / 2, this.game.height * 0.4, COLORS.gold, 28),
+        new FloatText(kasta.label, this.game.width / 2, this.game.height * 0.4, COLORS.gold, 28)
       )
       // 1000m gate: entering endless Mode Kos Impian is its own beat (§VI.4).
       if (kasta.mechanics?.endless) {
         this.game.events?.emit(EVENTS.IMPIAN_GATE, { dist: Math.floor(this.dist) })
         this.game.floats.push(
-          new FloatText('MODE KOS IMPIAN!', this.game.width / 2, this.game.height * 0.32, COLORS.accent, 26),
+          new FloatText(
+            'MODE KOS IMPIAN!',
+            this.game.width / 2,
+            this.game.height * 0.32,
+            COLORS.accent,
+            26
+          )
         )
       }
     }
@@ -227,7 +236,13 @@ export class PlayScene {
     const p = this.player
     const S = this.game.scale
     this.game.floats.push(
-      new FloatText(nearMissText(combo), p.x + p.w / 2, p.y - 40 * S, COLORS.gold, Math.round(28 * S)),
+      new FloatText(
+        nearMissText(combo),
+        p.x + p.w / 2,
+        p.y - 40 * S,
+        COLORS.gold,
+        Math.round(28 * S)
+      )
     )
     this.game.shake.trigger(5 * S, 0.18)
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult })
@@ -240,7 +255,13 @@ export class PlayScene {
     const { combo, mult } = this.combo.gain(kasta)
     const S = this.game.scale
     this.game.floats.push(
-      new FloatText('CRASH!', obstacle.x + obstacle.w / 2, obstacle.y, COLORS.accent, Math.round(32 * S)),
+      new FloatText(
+        'CRASH!',
+        obstacle.x + obstacle.w / 2,
+        obstacle.y,
+        COLORS.accent,
+        Math.round(32 * S)
+      )
     )
     this.game.shake.trigger(8 * S, 0.25)
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult, source: 'dash-break' })
@@ -253,7 +274,9 @@ export class PlayScene {
     const S = this.game.scale
     this.game.shake.trigger(12 * S, 0.3)
     const p = this.player
-    this.game.floats.push(new FloatText('AW!', p.x + p.w / 2, p.y - 20 * S, COLORS.accent, Math.round(28 * S)))
+    this.game.floats.push(
+      new FloatText('AW!', p.x + p.w / 2, p.y - 20 * S, COLORS.accent, Math.round(28 * S))
+    )
     this.game.events?.emit(EVENTS.PLAYER_HIT, { lives: this.lives })
 
     if (this.lives <= 0) {

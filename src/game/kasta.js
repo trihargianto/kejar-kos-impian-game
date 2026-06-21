@@ -22,6 +22,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'kipas_angin',
     label: 'KIPAS ANGIN',
+    tier: 0,
     fromMeters: KASTA_METERS.KIPAS_ANGIN,
     bg: '#e8d5b0',
     speedMultiplier: 1.0,
@@ -34,6 +35,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'ac_standar',
     label: 'AC STANDAR',
+    tier: 1,
     fromMeters: KASTA_METERS.AC_STANDAR,
     bg: '#d4ecd4',
     speedMultiplier: 1.1,
@@ -45,6 +47,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'singgahsini',
     label: 'SINGGAHSINI',
+    tier: 2,
     fromMeters: KASTA_METERS.SINGGAHSINI,
     bg: '#d4e4f0',
     speedMultiplier: 1.25,
@@ -56,6 +59,7 @@ export const KASTA_DEFS = Object.freeze([
   {
     id: 'kos_impian',
     label: 'KOS IMPIAN',
+    tier: 3,
     fromMeters: KASTA_METERS.KOS_IMPIAN,
     bg: '#ede0ff',
     speedMultiplier: 1.5,

@@ -30,6 +30,20 @@ export class ComboSystem {
     return { combo: this.combo, mult: this.mult }
   }
 
+  // Smaller reward for Sandal Jepit destroy (GDD §VII "combo kecil"):
+  // advances the combo counter + resets the decay timer, but does NOT
+  // recompute the multiplier. Near-miss remains the strictly-better path
+  // for score; sandal just keeps the chain alive + contributes a little.
+  // `kastaDef` is accepted for API symmetry with gain() even though small
+  // gains don't read the cap today — tier-specific tuning can land later
+  // without touching every caller.
+  // eslint-disable-next-line no-unused-vars
+  gainSmall(kastaDef) {
+    this.combo++
+    this.timer = 0
+    return { combo: this.combo, mult: this.mult }
+  }
+
   // Force a reset (e.g. on damage). Returns the previous combo count so callers
   // can emit COMBO_BREAK only when there was actually something to break.
   clear() {

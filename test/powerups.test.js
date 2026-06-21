@@ -1,0 +1,241 @@
+import { describe, it, expect } from 'vitest'
+import { Collectible } from '../src/game/entities/Collectible.js'
+import { CollectibleDirector } from '../src/game/scenes/play/CollectibleSystem.js'
+import { ComboSystem } from '../src/game/scenes/play/ComboSystem.js'
+import { Player } from '../src/game/entities/Player.js'
+import { SandalProjectile } from '../src/game/entities/SandalProjectile.js'
+import { KASTA_DEFS } from '../src/game/kasta.js'
+
+const mkGame = (over = {}) => ({
+  scale: 1,
+  width: 390,
+  floorY: 724,
+  ...over,
+})
+
+describe('Collectible kinds', () => {
+  it('exposes kopi + sandal kinds with distinct radii', () => {
+    const game = mkGame()
+    const kopi = new Collectible('kopi', game, 500)
+    const sandal = new Collectible('sandal', game, 500)
+    const coin = new Collectible('coin', game, 500)
+    expect(kopi.kind).toBe('kopi')
+    expect(sandal.kind).toBe('sandal')
+    expect(kopi.r).toBeGreaterThan(coin.r)
+    expect(sandal.r).toBeGreaterThan(kopi.r)
+  })
+
+  it('scales radius by game.scale', () => {
+    const game = mkGame({ scale: 2 })
+    const kopi = new Collectible('kopi', game, 500)
+    expect(kopi.r).toBe(40) // KOPI_R=20 * scale=2
+  })
+})
+
+describe('Player.applyKopi', () => {
+  it('sets the boost window + the i-frame window', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    expect(p.boosting).toBe(false)
+    expect(p.invincible).toBe(false)
+
+    const { started } = p.applyKopi()
+    expect(started).toBe(true)
+    expect(p.boosting).toBe(true)
+    expect(p.invincible).toBe(true)
+  })
+
+  it('does not report `started` if a boost is already running', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    p.applyKopi()
+    const { started } = p.applyKopi()
+    expect(started).toBe(false)
+  })
+
+  it('decrements boostTimer each update', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    p.applyKopi(2.0)
+    p.update(0.5)
+    expect(p.boostTimer).toBeCloseTo(1.5, 5)
+    p.update(2.0)
+    expect(p.boosting).toBe(false)
+  })
+
+  it('reset() clears boost + sandals', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    p.applyKopi()
+    p.applySandalAmmo()
+    p.reset()
+    expect(p.boostTimer).toBe(0)
+    expect(p.sandals).toBe(0)
+  })
+})
+
+describe('Player sandal ammo', () => {
+  it('applySandalAmmo resets ammo to SANDAL_AMMO (3), not accumulate', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    expect(p.sandals).toBe(0)
+    p.applySandalAmmo()
+    expect(p.sandals).toBe(3)
+    // Throw one, then pickup again — should reset to 3, not 5
+    p.consumeSandal()
+    expect(p.sandals).toBe(2)
+    p.applySandalAmmo()
+    expect(p.sandals).toBe(3)
+  })
+
+  it('consumeSandal returns false + no decrement when empty', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    expect(p.consumeSandal()).toBe(false)
+    expect(p.sandals).toBe(0)
+  })
+
+  it('consumeSandal decrements + returns true when ammo available', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    p.applySandalAmmo()
+    expect(p.consumeSandal()).toBe(true)
+    expect(p.sandals).toBe(2)
+    expect(p.consumeSandal()).toBe(true)
+    expect(p.consumeSandal()).toBe(true)
+    expect(p.consumeSandal()).toBe(false) // now empty
+  })
+})
+
+describe('ComboSystem.gainSmall', () => {
+  it('advances the combo counter + resets the decay timer', () => {
+    const c = new ComboSystem()
+    c.reset()
+    const kasta = KASTA_DEFS[0]
+    const { combo } = c.gainSmall(kasta)
+    expect(combo).toBe(1)
+    expect(c.combo).toBe(1)
+    expect(c.timer).toBe(0)
+  })
+
+  it('does NOT raise the multiplier (near-miss stays strictly better)', () => {
+    const c = new ComboSystem()
+    c.reset()
+    const kasta = KASTA_DEFS[0]
+    // Three small gains: combo=3, but mult stays at 1
+    c.gainSmall(kasta)
+    c.gainSmall(kasta)
+    const { mult } = c.gainSmall(kasta)
+    expect(c.combo).toBe(3)
+    expect(mult).toBe(1)
+
+    // One near-miss at combo=4 should bump the mult (gain uses computeMult)
+    c.gain(kasta)
+    expect(c.mult).toBeGreaterThan(1)
+  })
+})
+
+describe('CollectibleDirector power-up spawning', () => {
+  it('actually spawns kopi + sandal over a long enough window', () => {
+    const game = mkGame()
+    const d = new CollectibleDirector()
+    d.reset()
+    // Step past the longest interval (~28s base + jitter). Before this fix,
+    // spawn() was dead code; this guards against future regressions.
+    for (let i = 0; i < 60 * 45; i++) d.spawn(1 / 60, game, [])
+    const kinds = new Set(d.items.map((c) => c.kind))
+    expect(kinds).toContain('kopi')
+    expect(kinds).toContain('sandal')
+  })
+
+  it('reports powerups in the update() return when picked up', () => {
+    const game = mkGame()
+    const d = new CollectibleDirector()
+    d.reset()
+    // Spawn a kopi manually, then resolve pickup with a player bounds that
+    // overlaps it.
+    const kopi = new Collectible('kopi', game, game.floorY - 100)
+    d.items.push(kopi)
+    const playerBounds = { x: kopi.x - 5, y: kopi.y - 5, w: 10, h: 10 }
+    const { powerups } = d.update(0.001, 0, playerBounds)
+    expect(powerups).toContain('kopi')
+  })
+
+  it('keeps coins/items separate from powerups in the return payload', () => {
+    const game = mkGame()
+    const d = new CollectibleDirector()
+    d.reset()
+    const coin = new Collectible('coin', game, game.floorY - 100)
+    d.items.push(coin)
+    const playerBounds = { x: coin.x - 5, y: coin.y - 5, w: 10, h: 10 }
+    const { coins, powerups } = d.update(0.001, 0, playerBounds)
+    expect(coins).toBe(1)
+    expect(powerups).toEqual([])
+  })
+})
+
+describe('SandalProjectile', () => {
+  const origin = { x: 80, y: 600, w: 52, h: 76 }
+
+  it("launches from the player's right edge, mid-torso", () => {
+    const game = mkGame()
+    const s = new SandalProjectile(game, origin, null)
+    expect(s.x).toBe(origin.x + origin.w)
+    expect(s.y).toBe(origin.y + origin.h * 0.5)
+  })
+
+  it('returns null while still in flight (no impact yet)', () => {
+    const game = mkGame()
+    const target = { x: game.width + 200, w: 48 }
+    const obstacles = [target]
+    const s = new SandalProjectile(game, origin, target)
+    const result = s.update(1 / 60, game, obstacles)
+    expect(result).toBeNull()
+    expect(s.dead).toBe(false)
+    // Obstacle untouched until impact
+    expect(obstacles).toContain(target)
+  })
+
+  it('impacts + removes the target when the sandal nose crosses target.x', () => {
+    const game = mkGame()
+    // Place target past origin; sandal flies at 700 px/s, so a 60px gap closes
+    // in ~5 frames at 60fps. Step until impact.
+    const target = { x: origin.x + origin.w + 60, w: 48 }
+    const obstacles = [target]
+    const s = new SandalProjectile(game, origin, target)
+    let result = null
+    for (let i = 0; i < 10 && !s.dead; i++) result = s.update(1 / 60, game, obstacles)
+    expect(result).toEqual({ hit: true, obstacle: target })
+    expect(s.dead).toBe(true)
+    expect(obstacles).not.toContain(target)
+  })
+
+  it('expires off-screen without impact when its target was removed mid-flight', () => {
+    const game = mkGame()
+    const target = { x: game.width + 200, w: 48 }
+    const obstacles = [] // target was destroyed by something else
+    const s = new SandalProjectile(game, origin, target)
+    // Step many frames — sandal should reach the right edge and expire.
+    let result = null
+    for (let i = 0; i < 600 && !s.dead; i++) result = s.update(1 / 60, game, obstacles)
+    expect(s.dead).toBe(true)
+    expect(result).toEqual({ hit: false })
+  })
+
+  it('clears its target reference after the target is gone (keeps flying)', () => {
+    const game = mkGame()
+    const target = { x: game.width + 200, w: 48 }
+    const obstacles = []
+    const s = new SandalProjectile(game, origin, target)
+    s.update(1 / 60, game, obstacles)
+    expect(s.target).toBeNull()
+  })
+
+  it('spins while flying (visible throw animation)', () => {
+    const game = mkGame()
+    const s = new SandalProjectile(game, origin, null)
+    const spin0 = s._spin
+    s.update(0.1, game, [])
+    expect(s._spin).toBeGreaterThan(spin0)
+  })
+})

@@ -8,11 +8,19 @@
 //
 // Adding a feature (collectibles, Ibu Kos chaser, kasta twists) should extend
 // one of those modules or add a new one — not grow this file.
-import { BASE_SPEED, SPEED_RAMP, INVINCIBLE_TIME, DEATH_DELAY, START_LIVES } from '../constants.js'
+import {
+  BASE_SPEED,
+  SPEED_RAMP,
+  INVINCIBLE_TIME,
+  DEATH_DELAY,
+  START_LIVES,
+  KOPI_SPEED_MULTIPLIER,
+} from '../constants.js'
 import { KASTA_BG } from '../theme.js'
 import { COLORS } from '../theme.js'
 import { FloatText } from '../entities/FloatText.js'
 import { Player } from '../entities/Player.js'
+import { SandalProjectile } from '../entities/SandalProjectile.js'
 import { INTENT } from '../core/Input.js'
 import { getKastaDef } from '../kasta.js'
 import { nearMissText } from '../systems/score.js'
@@ -44,6 +52,7 @@ export class PlayScene {
     this.hud = new Hud()
     this.obs = []
     this.coins = 0
+    this.sandals = [] // active Sandal Jepit projectiles in flight
     this.activePrompt = null
     this._promptTimer = 0
     this._lastKastaId = null
@@ -58,6 +67,7 @@ export class PlayScene {
     this.deathTimer = 0
     this.obs = []
     this.coins = 0
+    this.sandals = []
     this.activePrompt = null
     this._promptTimer = 0
     this.spawner.reset()
@@ -96,6 +106,7 @@ export class PlayScene {
     this._updateSpawning(dt)
     this._updateObstacles(dt)
     this._updateCollectibles(dt)
+    this._updateSandals(dt)
     this.combo.update(dt)
     this._updateKasta()
     this._updatePrompts(dt)
@@ -104,9 +115,12 @@ export class PlayScene {
   // ── Sub-steps ───────────────────────────────────────────────────────────────
   _updateSpeed() {
     // Per-kasta speedMultiplier (GDD §VI) layers on the base distance ramp, so
-    // each tier genuinely feels faster, not just re-skinned.
+    // each tier genuinely feels faster, not just re-skinned. Kopi Sachet boost
+    // (GDD §VII Passive) layers on top of that as a temporary multiplier.
     const kasta = getKastaDef(this.dist)
-    this.spd = (BASE_SPEED + (this.dist / 10) * SPEED_RAMP) * (kasta.speedMultiplier ?? 1)
+    const boostMult = this.player.boosting ? KOPI_SPEED_MULTIPLIER : 1
+    this.spd =
+      (BASE_SPEED + (this.dist / 10) * SPEED_RAMP) * (kasta.speedMultiplier ?? 1) * boostMult
     // Feed the kasta's friction into the player so lantai licin lengthens dashes.
     this.player.friction = kasta.frictionMultiplier ?? 1
   }
@@ -130,6 +144,12 @@ export class PlayScene {
     if (input.anyPressed(INTENT.dash)) {
       firstInput = true
       this._spawnFloats(this.player.dash())
+    }
+    // Sandal Jepit (active power-up, GDD §VII). Throw is gated by ammo, not by
+    // first-input — but a throw still counts as a first input so the hint hides.
+    if (input.anyPressed(INTENT.throw)) {
+      firstInput = true
+      this._throwSandal()
     }
 
     if (firstInput) this.showControls = false
@@ -165,12 +185,17 @@ export class PlayScene {
 
   // Recehan + Item Kos Impian (GDD §VII). Coins feed the combo (a near-miss-like
   // reward) + currency; items build the dream-kos profile for the §IX reveal.
+  // Power-ups (Kopi Sachet passive + Sandal Jepit active) apply on pickup.
   _updateCollectibles(dt) {
     const S = this.game.scale
     // Spawn first (cadence + greed placement near upcoming obstacles), then
     // scroll + resolve pickups. Spawn reads this.obs so coins land near traffic.
     this.collectibles.spawn(dt, this.game, this.obs)
-    const { coins, picked } = this.collectibles.update(dt, this.spd * S, this.player.bounds)
+    const { coins, picked, powerups } = this.collectibles.update(
+      dt,
+      this.spd * S,
+      this.player.bounds
+    )
 
     if (coins > 0) {
       this.coins += coins
@@ -190,6 +215,98 @@ export class PlayScene {
       )
       this.game.events?.emit(EVENTS.COLLECT_ITEM, { tag: tag.id })
     }
+
+    for (const kind of powerups) {
+      if (kind === 'kopi') this._applyKopi()
+      else if (kind === 'sandal') this._applySandal()
+    }
+  }
+
+  // Kopi Sachet (passive, GDD §VII). Player.applyKopi extends both the boost
+  // window and the i-frame window, so near-miss keeps firing AND damage is
+  // skipped for the same 5s.
+  _applyKopi() {
+    const { started } = this.player.applyKopi()
+    const S = this.game.scale
+    const p = this.player
+    this.game.floats.push(
+      new FloatText('KOPI!', p.x + p.w / 2, p.y - 40 * S, '#6c3483', Math.round(24 * S))
+    )
+    this.game.events?.emit(EVENTS.COLLECT_KOPI)
+    if (started) this.game.events?.emit(EVENTS.BOOST_START)
+  }
+
+  // Sandal Jepit (active, GDD §VII). Pickup resets ammo to SANDAL_AMMO; the
+  // player throws via INTENT.throw (see _throwSandal).
+  _applySandal() {
+    const ammo = this.player.applySandalAmmo()
+    const S = this.game.scale
+    const p = this.player
+    this.game.floats.push(
+      new FloatText(`SANDAL ×${ammo}`, p.x + p.w / 2, p.y - 40 * S, '#2980b9', Math.round(22 * S))
+    )
+    this.game.events?.emit(EVENTS.COLLECT_SANDAL, { ammo })
+  }
+
+  // Sandal Jepit throw (GDD §VII). Spawn a visible SandalProjectile that flies
+  // from the player toward the nearest upcoming obstacle. Impact (combo gain,
+  // shake, float, obstacle destroy) is applied when the projectile lands in
+  // _onSandalImpact, NOT here — that way the player sees the throw travel.
+  _throwSandal() {
+    if (!this.player.consumeSandal()) return
+
+    // Lock onto the nearest upcoming obstacle so the projectile has somewhere
+    // to fly. If there's nothing ahead, refund the ammo (don't punish a
+    // premature trigger; the player can try again next frame).
+    let target = null
+    let bestDist = Infinity
+    const p = this.player
+    for (const o of this.obs) {
+      if (o.passed || o.nearMissed) continue
+      const d = o.x - (p.x + p.w)
+      if (d > 0 && d < bestDist) {
+        target = o
+        bestDist = d
+      }
+    }
+    if (!target) {
+      this.player.sandals++ // refund — nothing to throw at
+      return
+    }
+
+    this.sandals.push(new SandalProjectile(this.game, p.bounds, target))
+  }
+
+  // Step every active sandal projectile. On impact, apply the small combo
+  // reward + VFX (mirrors the old instant-destroy path). Off-screen expirations
+  // and target-lost paths just clean up silently.
+  _updateSandals(dt) {
+    for (let i = this.sandals.length - 1; i >= 0; i--) {
+      const s = this.sandals[i]
+      const result = s.update(dt, this.game, this.obs)
+      if (result?.hit) this._onSandalImpact(result.obstacle)
+      if (s.dead) this.sandals.splice(i, 1)
+    }
+  }
+
+  // Impact: small combo reward (gainSmall — combo++ but no mult boost, so
+  // near-miss stays strictly better for score). Float + shake communicate
+  // the hit at the obstacle's final position.
+  _onSandalImpact(obstacle) {
+    const kasta = getKastaDef(this.dist)
+    const { combo, mult } = this.combo.gainSmall(kasta)
+    const S = this.game.scale
+    this.game.floats.push(
+      new FloatText(
+        'SANDAL!',
+        obstacle.x + obstacle.w / 2,
+        obstacle.y,
+        COLORS.accent,
+        Math.round(22 * S)
+      )
+    )
+    this.game.shake.trigger(6 * S, 0.18)
+    this.game.events?.emit(EVENTS.SANDAL_THROW, { combo, mult })
   }
 
   _updateKasta() {
@@ -304,6 +421,10 @@ export class PlayScene {
 
     this.collectibles.draw(ctx)
     this.obs.forEach((o) => o.draw(ctx))
+    // Sandal projectiles fly in front of obstacles so the throw reads clearly
+    // even when traffic is dense. Drawn behind the player so the launch point
+    // (the player's right hand) stays visually anchored.
+    this.sandals.forEach((s) => s.draw(ctx))
     this.player.draw(ctx)
 
     this.hud.draw(ctx, this.game, {
@@ -315,6 +436,8 @@ export class PlayScene {
       dashCd: this.player.dashCd,
       coins: this.coins,
       showControls: this.showControls,
+      boostTimer: this.player.boostTimer,
+      sandals: this.player.sandals,
     })
 
     if (this.activePrompt) this._drawPrompt(ctx)

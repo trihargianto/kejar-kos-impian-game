@@ -4,7 +4,7 @@
 // hint shown until the first input. Pure draw — owns no game state.
 //
 // Receives a snapshot each frame from PlayScene so it stays trivially testable.
-import { COLORS, FONTS } from '../../theme.js'
+import { COLORS, FONTS, ctaPulse } from '../../theme.js'
 import { START_LIVES } from '../../constants.js'
 
 /**
@@ -17,6 +17,8 @@ import { START_LIVES } from '../../constants.js'
  * @property {number} dashCd
  * @property {number} coins
  * @property {boolean} showControls
+ * @property {number} boostTimer  Seconds of Kopi Sachet boost remaining (0 = none)
+ * @property {number} sandals     Sandal Jepit ammo (0 = none)
  */
 
 export class Hud {
@@ -38,7 +40,7 @@ export class Hud {
     ctx.fillText(
       '♥'.repeat(snap.lives) + '♡'.repeat(Math.max(0, START_LIVES - snap.lives)),
       fs(12),
-      TOP + fs(22),
+      TOP + fs(22)
     )
 
     // Coins (Recehan) — under the lives row.
@@ -62,6 +64,27 @@ export class Hud {
       ctx.fillText(`COMBO x${snap.combo}`, W / 2, TOP + fs(44))
     }
 
+    // Power-ups (GDD §VII) — top right
+    ctx.textAlign = 'right'
+    if (snap.boostTimer > 0) {
+      ctx.fillStyle = '#6c3483' // kopi brown
+      ctx.font = `bold ${fs(15)}px ${FONTS.mono}`
+      ctx.fillText(`KOPI ${snap.boostTimer.toFixed(1)}s`, W - fs(12), TOP + fs(22))
+    }
+    if (snap.sandals > 0) {
+      ctx.fillStyle = '#2980b9' // sandal blue
+      ctx.font = `bold ${fs(14)}px ${FONTS.mono}`
+      ctx.fillText(`SANDAL ×${snap.sandals}`, W - fs(12), TOP + fs(44))
+      // Contextual throw hint (GDD §VII "tombol HUD"). Pulses so it's noticed
+      // but doesn't fight the counter for attention. Sourced from `dist` —
+      // monotonic + smooth, so the pulse animates without per-scene clock state.
+      ctx.globalAlpha = ctaPulse(snap.dist)
+      ctx.fillStyle = COLORS.faint
+      ctx.font = `${fs(9)}px ${FONTS.mono}`
+      ctx.fillText('↑=LEMPAR', W - fs(12), TOP + fs(58))
+      ctx.globalAlpha = 1
+    }
+
     // Kasta — bottom left
     ctx.fillStyle = COLORS.muted
     ctx.font = `${fs(12)}px ${FONTS.mono}`
@@ -78,7 +101,10 @@ export class Hud {
       ctx.fillText('DASH: READY', W - fs(12), BOT - fs(18))
     }
 
-    // Controls hint — until first input
+    // Controls hint — until first input. Swipe↑ is intentionally NOT here: it's
+    // the Sandal Jepit trigger, only shown contextually above the ammo counter
+    // when the player actually has ammo (avoids overwhelming first-timers with
+    // a verb they can't use yet).
     if (snap.showControls) {
       ctx.fillStyle = COLORS.faint
       ctx.font = `${fs(10)}px ${FONTS.mono}`

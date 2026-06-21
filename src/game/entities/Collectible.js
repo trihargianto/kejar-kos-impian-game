@@ -1,8 +1,9 @@
 // ─── Collectibles ─────────────────────────────────────────────────────────────
-// Two kinds, per GDD §VII (Greed Mechanic):
-//   coin  — "Recehan": fuels combo + currency, placed near obstacles.
-//   item  — "Item Kos Impian": facility tags (AC, wifi, dekat kampus, ...) that
-//           build the player's dream-kos profile for the end-of-run reveal (§IX).
+// Four kinds, per GDD §VII (Greed Mechanic) + §VII Power-ups subsection:
+//   coin   — "Recehan": fuels combo + currency, placed near obstacles.
+//   item   — "Item Kos Impian": facility tags that build the dream-kos profile.
+//   kopi   — "Kopi Sachet" (passive power-up): 5s speed + immune on pickup.
+//   sandal — "Sandal Jepit" (active power-up): resets ammo to 3 on pickup.
 //
 // Same scroll/offscreen contract as Obstacle so the play loop treats them
 // uniformly. Collection is a circle-vs-AABB test in CollectibleSystem; the
@@ -22,23 +23,25 @@ export const FACILITY_TAGS = Object.freeze([
 
 const COIN_R = 11 // design-space radius
 const ITEM_R = 18
+const KOPI_R = 20
+const SANDAL_R = 22
 
 export class Collectible {
   /**
-   * @param {'coin'|'item'} kind
+   * @param {'coin'|'item'|'kopi'|'sandal'} kind
    * @param {object} game        provides scale + width
    * @param {number} runtimeY    y in RUNTIME px (already scaled, anchored to
    *                             game.floorY). NOT design space — the floor's
    *                             runtime position is a height-ratio, not
    *                             design*scale, so callers must pass a Y derived
    *                             from game.floorY or coins drift off the player.
-   * @param {object|null} tag     facility tag (item only); ignored for coins
+   * @param {object|null} tag     facility tag (item only); ignored otherwise
    */
   constructor(kind, game, runtimeY, tag = null) {
     const S = game.scale
     this.kind = kind
     this.tag = tag
-    this.r = Math.round((kind === 'coin' ? COIN_R : ITEM_R) * S)
+    this.r = Math.round(radiusFor(kind) * S)
     this.y = Math.round(runtimeY)
     this.x = game.width + this.r * 2
     this.collected = false
@@ -80,6 +83,42 @@ export class Collectible {
       return
     }
 
+    if (this.kind === 'kopi') {
+      // Kopi Sachet — warm brown sachet shape (placeholder).
+      ctx.fillStyle = '#6c3483'
+      roundRect(ctx, this.x - this.r, yb - this.r, this.r * 2, this.r * 2, this.r * 0.3)
+      ctx.strokeStyle = '#3a1c4a'
+      ctx.lineWidth = Math.max(1, this.r * 0.1)
+      ctx.beginPath()
+      ctx.roundRect(this.x - this.r, yb - this.r, this.r * 2, this.r * 2, this.r * 0.3)
+      ctx.stroke()
+      ctx.fillStyle = '#fff'
+      ctx.font = `bold ${this._labelSize}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('KOPI', this.x, yb)
+      ctx.textBaseline = 'alphabetic'
+      return
+    }
+
+    if (this.kind === 'sandal') {
+      // Sandal Jepit — flat flip-flop silhouette in blue (placeholder).
+      ctx.fillStyle = '#2980b9'
+      roundRect(ctx, this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
+      ctx.strokeStyle = '#1b4f72'
+      ctx.lineWidth = Math.max(1, this.r * 0.1)
+      ctx.beginPath()
+      ctx.roundRect(this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
+      ctx.stroke()
+      ctx.fillStyle = '#fff'
+      ctx.font = `bold ${this._labelSize}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('SNDL', this.x, yb)
+      ctx.textBaseline = 'alphabetic'
+      return
+    }
+
     // Dream-kos item — a teal tag chip with the facility name.
     ctx.fillStyle = '#16a085'
     roundRect(ctx, this.x - this.r, yb - this.r, this.r * 2, this.r * 2, this.r * 0.5)
@@ -95,4 +134,12 @@ export class Collectible {
     ctx.fillText(this.tag?.icon ?? '?', this.x, yb)
     ctx.textBaseline = 'alphabetic'
   }
+}
+
+function radiusFor(kind) {
+  if (kind === 'coin') return COIN_R
+  if (kind === 'item') return ITEM_R
+  if (kind === 'kopi') return KOPI_R
+  if (kind === 'sandal') return SANDAL_R
+  return ITEM_R
 }

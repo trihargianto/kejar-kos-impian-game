@@ -71,9 +71,13 @@ export class Input {
 // ─── Named input intents ──────────────────────────────────────────────────────
 // Maps gameplay actions to the raw codes that trigger them. Scenes query intents
 // instead of raw keys, so rebinding lives in one place.
+//
+// Note: SwipeUp is reserved for the Sandal Jepit throw (GDD §VII), NOT jump.
+// Mobile jump = Tap. Desktop jump = Space / ArrowUp / W.
 export const INTENT = {
-  jump: ['Space', 'ArrowUp', 'KeyW', 'Tap', 'SwipeUp'],
+  jump: ['Space', 'ArrowUp', 'KeyW', 'Tap'],
   slide: ['ArrowDown', 'KeyS', 'SwipeDown'],
   dash: ['ShiftLeft', 'ShiftRight', 'ArrowRight', 'SwipeRight'],
+  throw: ['SwipeUp', 'KeyQ'], // Sandal Jepit (active power-up)
   confirm: ['Space', 'Enter', 'Tap', 'ArrowUp'],
 }

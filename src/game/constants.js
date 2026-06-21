@@ -38,6 +38,18 @@ export const START_LIVES = 3
 export const INVINCIBLE_TIME = 1.5 // seconds of i-frames after a hit
 export const DEATH_DELAY = 0.7 // seconds between final hit and game-over transition
 
+// ─── Power-ups (GDD §VII) ──────────────────────────────────────────────────────
+// Kopi Sachet (passive): 5s speed boost + immunity. Reuses the life-system
+// invTimer for the immune window (so near-miss still fires, damage is skipped).
+export const KOPI_DURATION = 5.0 // seconds of speed + immune
+export const KOPI_SPEED_MULTIPLIER = 1.5 // applied on top of kasta + ramp
+export const KOPI_INTERVAL = 22.0 // base seconds between kopi spawns (rare)
+
+// Sandal Jepit (active): 3 ammo per pickup (reset, not accumulate). Each trigger
+// destroys one upcoming obstacle for a small combo reward.
+export const SANDAL_AMMO = 3
+export const SANDAL_INTERVAL = 28.0 // base seconds between sandal spawns (rare)
+
 // ─── Obstacle spawning ────────────────────────────────────────────────────────
 export const SPAWN_INTERVAL_MIN = 1.1 // seconds between spawns (minimum, shrinks with distance)
 export const SPAWN_INTERVAL_MAX = 2.2

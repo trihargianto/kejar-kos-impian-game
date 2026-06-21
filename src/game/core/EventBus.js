@@ -30,6 +30,12 @@ export const EVENTS = Object.freeze({
   // Collectibles (Phase 1+)
   COLLECT_COIN: 'collect:coin',
   COLLECT_ITEM: 'collect:item',
+  // Power-ups (GDD §VII)
+  COLLECT_KOPI: 'collect:kopi',
+  COLLECT_SANDAL: 'collect:sandal',
+  SANDAL_THROW: 'sandal:throw',
+  BOOST_START: 'boost:start',
+  BOOST_END: 'boost:end',
   // UI
   HUD_TICK: 'hud:tick',
 })

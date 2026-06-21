@@ -86,6 +86,16 @@ export class AudioSystem {
     sub(EVENTS.COLLECT_COIN, () => this._tone(880, 0.08, 'triangle', 0.14, 1180))
     sub(EVENTS.COLLECT_ITEM, () => this._tone(660, 0.16, 'triangle', 0.16, 990))
 
+    // Power-ups (GDD §VII). Kopi pickup = warm rising chord; sandal pickup =
+    // short bright blip. Throw = percussive thwack; boost start = zoom-up tone.
+    sub(EVENTS.COLLECT_KOPI, () => {
+      this._tone(440, 0.18, 'triangle', 0.18, 660)
+      this._tone(660, 0.18, 'triangle', 0.16, 880)
+    })
+    sub(EVENTS.COLLECT_SANDAL, () => this._tone(740, 0.12, 'square', 0.16, 980))
+    sub(EVENTS.SANDAL_THROW, () => this._noise(0.1, 0.18))
+    sub(EVENTS.BOOST_START, () => this._tone(220, 0.4, 'sawtooth', 0.16, 660))
+
     // Near-miss: pitch climbs with combo (capped so it stays musical).
     sub(EVENTS.NEAR_MISS, ({ combo = 1 } = {}) => {
       const semis = Math.min(combo, 12)

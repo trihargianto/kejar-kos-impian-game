@@ -25,6 +25,8 @@ import {
   DASH_VELOCITY,
   DASH_DURATION,
   DASH_COOLDOWN,
+  KOPI_DURATION,
+  SANDAL_AMMO,
 } from '../constants.js'
 import { COLORS } from '../theme.js'
 import { lerp, easeOut, roundRect } from '../core/utils.js'
@@ -194,6 +196,9 @@ export class Player {
     this.dashCd = 0
     this.invTimer = 0
     this.friction = 1 // <1 = lantai licin (kasta twist); set by the scene each frame
+    // Power-ups (GDD §VII)
+    this.boostTimer = 0 // Kopi Sachet speed-boost window; speed mult applies while > 0
+    this.sandals = 0 // Sandal Jepit ammo (reset to SANDAL_AMMO on pickup)
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false
@@ -206,7 +211,7 @@ export class Player {
         dashing: dashingState(),
         snapBack: snapBackState(),
       },
-      this,
+      this
     )
   }
 
@@ -247,6 +252,8 @@ export class Player {
     this.dashCd = 0
     this.invTimer = 0
     this.friction = 1
+    this.boostTimer = 0
+    this.sandals = 0
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false
@@ -261,6 +268,39 @@ export class Player {
   // Derived flags (read by collision system).
   get invincible() {
     return this.invTimer > 0
+  }
+
+  // Kopi Sachet speed boost is active (GDD §VII Passive). Independent of
+  // invincibility: a hit during boost still skips damage via invTimer, but
+  // the speed window can outlast the i-frame window if we tune them apart.
+  get boosting() {
+    return this.boostTimer > 0
+  }
+
+  // Passive: Kopi Sachet — sets the speed-boost window AND extends the
+  // life-system invTimer so damage is skipped for the same 5s (GDD: "boost
+  // kecepatan + imun 5 detik", "reuse invuln timer dari life system").
+  // Near-miss is independent of invincibility (see CollisionSystem), so the
+  // combo chain keeps rolling during the boost.
+  applyKopi(duration = KOPI_DURATION) {
+    const prevBoosting = this.boosting
+    this.boostTimer = Math.max(this.boostTimer, duration)
+    this.invTimer = Math.max(this.invTimer, duration)
+    return { started: !prevBoosting, duration }
+  }
+
+  // Active: Sandal Jepit — pickup resets ammo to SANDAL_AMMO (not cumulative,
+  // per GDD "Pickup sandal → reset amunisi ke 3 (bukan akumulasi/nambah)").
+  applySandalAmmo(ammo = SANDAL_AMMO) {
+    this.sandals = ammo
+    return this.sandals
+  }
+
+  // Returns true if there was ammo to spend (the throw lands), false otherwise.
+  consumeSandal() {
+    if (this.sandals <= 0) return false
+    this.sandals--
+    return true
   }
 
   // Public actions — send an intent through the FSM, then drain accumulated
@@ -287,6 +327,7 @@ export class Player {
 
   update(dt) {
     this.fsm.update(dt)
+    if (this.boostTimer > 0) this.boostTimer -= dt
   }
 
   // ── Drawing (unchanged visuals) ─────────────────────────────────────────────
@@ -310,7 +351,13 @@ export class Player {
         ctx.fill()
         ctx.fillStyle = COLORS.playerPupil
         ctx.beginPath()
-        ctx.arc(eyeX + Math.round(1.5 * S), eyeY + Math.round(S), Math.round(2.5 * S), 0, Math.PI * 2)
+        ctx.arc(
+          eyeX + Math.round(1.5 * S),
+          eyeY + Math.round(S),
+          Math.round(2.5 * S),
+          0,
+          Math.PI * 2
+        )
         ctx.fill()
       }
 
@@ -323,7 +370,7 @@ export class Player {
             drawY + Math.round(4 * S),
             this.w,
             h - Math.round(8 * S),
-            Math.round(5 * S),
+            Math.round(5 * S)
           )
         }
       }

@@ -12,6 +12,7 @@ export const EVENTS = Object.freeze({
   GAME_START: 'game:start',
   GAME_OVER: 'game:over',
   SCENE_CHANGE: 'scene:change',
+  PAUSE: 'game:pause',
   // Player
   PLAYER_JUMP: 'player:jump',
   PLAYER_SLIDE: 'player:slide',

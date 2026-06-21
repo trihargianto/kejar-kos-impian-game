@@ -3,8 +3,13 @@
 export const GAME_WIDTH = 390
 export const GAME_HEIGHT = 844
 
+// Height of the ground strip at the bottom (design px). The play area lives
+// above it; the on-screen control cluster lives below the floor line, in this
+// strip, so buttons never overlap obstacles. Sized to clear the cluster box.
+export const FLOOR_HEIGHT = 220
+
 // Y position of the floor surface (top of the ground strip)
-export const FLOOR_Y = GAME_HEIGHT - 120
+export const FLOOR_Y = GAME_HEIGHT - FLOOR_HEIGHT
 
 // ─── Player ───────────────────────────────────────────────────────────────────
 export const PLAYER_X = 80 // fixed horizontal position (runner auto-scrolls world)

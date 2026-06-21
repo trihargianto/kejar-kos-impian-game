@@ -2,7 +2,7 @@
 // Owns the canvas, the main loop, and the shared context handed to every scene.
 // All gameplay lives in scenes (start / play / gameover); this file only wires
 // them together and drives the frame.
-import { GAME_WIDTH, GAME_HEIGHT } from './constants.js'
+import { GAME_WIDTH, GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
 import { COLORS } from './theme.js'
 import { Input } from './core/Input.js'
 import { Shake } from './core/Shake.js'
@@ -35,7 +35,7 @@ export class Game {
     this.width = Math.round(canvas.width / dpr)
     this.height = Math.round(canvas.height / dpr)
     this.scale = this.width / GAME_WIDTH
-    this.floorY = Math.round((GAME_HEIGHT - 120) / GAME_HEIGHT * this.height)
+    this.floorY = Math.round(((GAME_HEIGHT - FLOOR_HEIGHT) / GAME_HEIGHT) * this.height)
 
     // Scale context once so all draw calls use CSS pixel coordinates
     this.ctx.scale(dpr, dpr)
@@ -49,6 +49,7 @@ export class Game {
       .register('gameover', new GameOverScene(this))
 
     this._last = null
+    this.paused = false
     this._loop = this._loop.bind(this)
     this._scenes.go('start')
     this._raf = requestAnimationFrame(this._loop)
@@ -57,6 +58,24 @@ export class Game {
   // Shared scene helper: a scene calls this to transition.
   go(name) {
     this._scenes.go(name)
+  }
+
+  // ── Pause ─────────────────────────────────────────────────────────────────
+  // Freezes the simulation: the loop keeps running (so the frozen frame stays
+  // painted) but no scene/float/shake update happens. Resuming clears _last so
+  // the first post-resume frame doesn't integrate the whole paused duration as
+  // one giant dt. Input edges are flushed on pause so a queued tap doesn't fire.
+  setPaused(value) {
+    const next = !!value
+    if (next === this.paused) return
+    this.paused = next
+    if (!next) this._last = null // avoid a dt spike on resume
+    this.input.flush()
+    this.events.emit(EVENTS.PAUSE, { paused: next })
+  }
+
+  togglePause() {
+    this.setPaused(!this.paused)
   }
 
   destroy() {
@@ -68,14 +87,18 @@ export class Game {
 
   _loop(ts) {
     this._raf = requestAnimationFrame(this._loop)
-    const dt = this._last ? Math.min((ts - this._last) / 1000, MAX_DT) : 0.016
-    this._last = ts
 
-    // Update
-    this.shake.update(dt)
-    this._scenes.update(dt)
-    this.floats.forEach((f) => f.update(dt))
-    this.floats = this.floats.filter((f) => !f.dead())
+    // While paused, keep painting the frozen frame but run no updates, so the
+    // world holds still. We still redraw (cheap) so an overlay/resize stays clean.
+    if (!this.paused) {
+      const dt = this._last ? Math.min((ts - this._last) / 1000, MAX_DT) : 0.016
+      this._last = ts
+
+      this.shake.update(dt)
+      this._scenes.update(dt)
+      this.floats.forEach((f) => f.update(dt))
+      this.floats = this.floats.filter((f) => !f.dead())
+    }
 
     // Draw (under shake transform)
     const ctx = this.ctx

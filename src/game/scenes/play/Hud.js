@@ -13,10 +13,6 @@ import { START_LIVES } from '../../constants.js'
  * @property {number} dist
  * @property {number} combo
  * @property {number} mult
- * @property {string} kastaLabel
- * @property {number} dashCd
- * @property {number} coins
- * @property {boolean} showControls
  * @property {number} boostTimer  Seconds of Kopi Sachet boost remaining (0 = none)
  * @property {number} sandals     Sandal Jepit ammo (0 = none)
  */
@@ -28,9 +24,8 @@ export class Hud {
    * @param {HudSnapshot} snap
    */
   draw(ctx, game, snap) {
-    const { width: W, height: H, scale: S, safeTop, safeBottom } = game
+    const { width: W, scale: S, safeTop } = game
     const TOP = safeTop + 8
-    const BOT = H - safeBottom - 8
     const fs = (n) => Math.round(n * S)
 
     // Lives — top left
@@ -43,12 +38,7 @@ export class Hud {
       TOP + fs(22)
     )
 
-    // Coins (Recehan) — under the lives row.
-    if (snap.coins > 0) {
-      ctx.fillStyle = COLORS.gold
-      ctx.font = `bold ${fs(14)}px ${FONTS.mono}`
-      ctx.fillText(`Rp ${snap.coins}`, fs(12), TOP + fs(44))
-    }
+    // Coins (Recehan) now live in the ground-strip badge (GroundPanel), not here.
 
     // Distance — top center (with multiplier if combo active)
     ctx.font = `bold ${fs(22)}px ${FONTS.mono}`
@@ -75,41 +65,19 @@ export class Hud {
       ctx.fillStyle = '#2980b9' // sandal blue
       ctx.font = `bold ${fs(14)}px ${FONTS.mono}`
       ctx.fillText(`SANDAL ×${snap.sandals}`, W - fs(12), TOP + fs(44))
-      // Contextual throw hint (GDD §VII "tombol HUD"). Pulses so it's noticed
-      // but doesn't fight the counter for attention. Sourced from `dist` —
+      // Contextual throw hint (GDD §VII "tombol HUD"). Points at the THROW
+      // button (bottom-right) now that throw is a button, not a swipe. Pulses so
+      // it's noticed but doesn't fight the counter. Sourced from `dist` —
       // monotonic + smooth, so the pulse animates without per-scene clock state.
       ctx.globalAlpha = ctaPulse(snap.dist)
       ctx.fillStyle = COLORS.faint
       ctx.font = `${fs(9)}px ${FONTS.mono}`
-      ctx.fillText('↑=LEMPAR', W - fs(12), TOP + fs(58))
+      ctx.fillText('Tombol LEMPAR ↓', W - fs(12), TOP + fs(58))
       ctx.globalAlpha = 1
     }
 
-    // Kasta — bottom left
-    ctx.fillStyle = COLORS.muted
-    ctx.font = `${fs(12)}px ${FONTS.mono}`
-    ctx.textAlign = 'left'
-    ctx.fillText(`KASTA: ${snap.kastaLabel}`, fs(12), BOT - fs(18))
+    // Dash cooldown is shown by the DASH button itself (disabled while cooling,
+    // like the THROW button when out of ammo), so there's no HUD text for it.
 
-    // Dash — bottom right
-    ctx.textAlign = 'right'
-    if (snap.dashCd > 0) {
-      ctx.fillStyle = COLORS.accent
-      ctx.fillText(`DASH: ${snap.dashCd.toFixed(1)}s`, W - fs(12), BOT - fs(18))
-    } else {
-      ctx.fillStyle = COLORS.green
-      ctx.fillText('DASH: READY', W - fs(12), BOT - fs(18))
-    }
-
-    // Controls hint — until first input. Swipe↑ is intentionally NOT here: it's
-    // the Sandal Jepit trigger, only shown contextually above the ammo counter
-    // when the player actually has ammo (avoids overwhelming first-timers with
-    // a verb they can't use yet).
-    if (snap.showControls) {
-      ctx.fillStyle = COLORS.faint
-      ctx.font = `${fs(10)}px ${FONTS.mono}`
-      ctx.textAlign = 'center'
-      ctx.fillText('TAP=Lompat  ↓=Slide  →=Dash', W / 2, BOT - fs(2))
-    }
   }
 }

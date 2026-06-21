@@ -30,6 +30,7 @@ import { ComboSystem } from './play/ComboSystem.js'
 import { CollectibleDirector } from './play/CollectibleSystem.js'
 import { PromptDirector } from './play/PromptDirector.js'
 import { HorizonGoal } from './play/HorizonGoal.js'
+import { GroundPanel } from './play/GroundPanel.js'
 import { Hud } from './play/Hud.js'
 import { testObstacle, scaledNearMissDist } from './play/CollisionSystem.js'
 
@@ -49,6 +50,7 @@ export class PlayScene {
     this.collectibles = new CollectibleDirector()
     this.prompts = new PromptDirector()
     this.horizon = new HorizonGoal()
+    this.groundPanel = new GroundPanel()
     this.hud = new Hud()
     this.obs = []
     this.coins = 0
@@ -76,7 +78,6 @@ export class PlayScene {
     this.prompts.reset()
     this.player.reset()
     this.game.floats.length = 0
-    this.showControls = true
     this._lastKastaId = kasta.id
     this.game.events?.emit(EVENTS.GAME_START)
   }
@@ -131,28 +132,24 @@ export class PlayScene {
 
   _handleInput() {
     const input = this.game.input
-    let firstInput = false
 
+    // One jump per frame. Two physical taps land in different frames (frames are
+    // ~16ms, a human double-tap is far slower), so each becomes its own jump and
+    // the second is the double jump. Firing more than once per frame would burn
+    // both jumps on a single tap, so we deliberately do NOT drain.
     if (input.anyPressed(INTENT.jump)) {
-      firstInput = true
       this._spawnFloats(this.player.jump())
     }
     if (input.anyPressed(INTENT.slide)) {
-      firstInput = true
       this._spawnFloats(this.player.slide())
     }
     if (input.anyPressed(INTENT.dash)) {
-      firstInput = true
       this._spawnFloats(this.player.dash())
     }
-    // Sandal Jepit (active power-up, GDD §VII). Throw is gated by ammo, not by
-    // first-input — but a throw still counts as a first input so the hint hides.
+    // Sandal Jepit (active power-up, GDD §VII). Throw is gated by ammo.
     if (input.anyPressed(INTENT.throw)) {
-      firstInput = true
       this._throwSandal()
     }
-
-    if (firstInput) this.showControls = false
   }
 
   _updateSpawning(dt) {
@@ -255,26 +252,41 @@ export class PlayScene {
   _throwSandal() {
     if (!this.player.consumeSandal()) return
 
-    // Lock onto the nearest upcoming obstacle so the projectile has somewhere
-    // to fly. If there's nothing ahead, refund the ammo (don't punish a
-    // premature trigger; the player can try again next frame).
-    let target = null
-    let bestDist = Infinity
-    const p = this.player
-    for (const o of this.obs) {
-      if (o.passed || o.nearMissed) continue
-      const d = o.x - (p.x + p.w)
-      if (d > 0 && d < bestDist) {
-        target = o
-        bestDist = d
-      }
-    }
+    // Obstacles already claimed by an in-flight sandal are skipped, otherwise
+    // two quick throws would both lock onto the same nearest obstacle and the
+    // second sandal would silently expire into nothing once the first one
+    // destroyed it (the "only 2 throws worked" bug).
+    const claimed = new Set()
+    for (const s of this.sandals) if (s.target) claimed.add(s.target)
+
+    // Lock onto the nearest unclaimed upcoming obstacle. If there's nothing
+    // eligible, refund the ammo (don't punish a premature trigger; the player
+    // can try again next frame).
+    const target = this._pickSandalTarget(claimed)
     if (!target) {
       this.player.sandals++ // refund — nothing to throw at
       return
     }
 
-    this.sandals.push(new SandalProjectile(this.game, p.bounds, target))
+    this.sandals.push(new SandalProjectile(this.game, this.player.bounds, target))
+  }
+
+  // Nearest obstacle ahead of the player that hasn't been resolved and isn't
+  // claimed by another in-flight sandal. Pure relative to (this.obs, claimed).
+  _pickSandalTarget(claimed = new Set()) {
+    let target = null
+    let bestDist = Infinity
+    const rightEdge = this.player.x + this.player.w
+    for (const o of this.obs) {
+      if (o.passed || o.nearMissed) continue
+      if (claimed.has(o)) continue
+      const d = o.x - rightEdge
+      if (d > 0 && d < bestDist) {
+        target = o
+        bestDist = d
+      }
+    }
+    return target
   }
 
   // Step every active sandal projectile. On impact, apply the small combo
@@ -418,6 +430,14 @@ export class PlayScene {
     // Horizon goal sits between sky and floor — the dream kos you're chasing.
     this.horizon.draw(ctx, this.game, this.dist)
     this.game.drawFloor(ctx)
+    // Ground-strip panels (scrolling detail + coin badge + dream tracker) fill
+    // the bottom-left space freed by the raised floor. Drawn on the floor, under
+    // obstacles/player so a passing obstacle still reads above the panel.
+    this.groundPanel.draw(ctx, this.game, {
+      dist: this.dist,
+      coins: this.coins,
+      dreamProfile: this.collectibles.dreamProfile(),
+    })
 
     this.collectibles.draw(ctx)
     this.obs.forEach((o) => o.draw(ctx))
@@ -432,10 +452,6 @@ export class PlayScene {
       dist: this.dist,
       combo: this.combo.combo,
       mult: this.combo.mult,
-      kastaLabel: kasta.label,
-      dashCd: this.player.dashCd,
-      coins: this.coins,
-      showControls: this.showControls,
       boostTimer: this.player.boostTimer,
       sandals: this.player.sandals,
     })

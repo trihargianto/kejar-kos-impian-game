@@ -53,11 +53,11 @@ export class StartScene {
     ctx.fillText('TAP / SPASI untuk mulai', W / 2, H * 0.68)
     ctx.globalAlpha = 1
 
-    // Controls
+    // Controls — all actions are on-screen buttons during play.
     ctx.font = `${Math.round(13 * S)}px ${FONTS.mono}`
     ctx.fillStyle = COLORS.mutedSoft
-    ctx.fillText('TAP = Lompat', W / 2, H * 0.8)
-    ctx.fillText('SWIPE ↓ = Slide', W / 2, H * 0.8 + Math.round(20 * S))
-    ctx.fillText('SWIPE → = Dash', W / 2, H * 0.8 + Math.round(40 * S))
+    ctx.fillText('Tombol kanan bawah:', W / 2, H * 0.8)
+    ctx.fillText('JUMP · SLIDE · DASH · THROW', W / 2, H * 0.8 + Math.round(20 * S))
+    ctx.fillText('Tap JUMP lagi di udara = double jump', W / 2, H * 0.8 + Math.round(40 * S))
   }
 }

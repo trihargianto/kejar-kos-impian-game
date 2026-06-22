@@ -243,3 +243,78 @@ describe('Player jump-out-of-slide', () => {
     expect(p.grounded).toBe(false)
   })
 })
+
+describe('Player mid-air dash responsiveness', () => {
+  it('dash works while airborne (not gated to the ground)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    expect(p.grounded).toBe(false)
+    p.dash()
+    expect(p.dashing).toBe(true)
+  })
+
+  it('jump fires immediately during the dash burst (no dead window)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump() // airborne, 1 jump left
+    settle(p)
+    p.dash()
+    expect(p.dashing).toBe(true)
+    // Press jump mid-dash — should cancel the burst and launch right away.
+    p.jump()
+    expect(p.dashing).toBe(false)
+    expect(p.vy).toBeLessThan(0) // launched upward
+  })
+
+  it('jump fires immediately during snap-back (the ~0.22s tail)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    p.dash()
+    // Run the dash out so we enter snapBack.
+    for (let i = 0; i < 20 && p.dashing; i++) p.update(0.016)
+    expect(p.snappingBack).toBe(true)
+    p.jump() // should not be swallowed by snap-back
+    expect(p.snappingBack).toBe(false)
+    expect(p.vy).toBeLessThan(0)
+  })
+
+  it('jump-out-of-burst respects the jump budget (no infinite jumps)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump() // jump 1
+    p.jump() // jump 2 (double) → jumps now 0
+    p.dash()
+    expect(p.jumps).toBe(0)
+    const vyBefore = p.vy
+    p.jump() // no jumps left → must NOT re-launch
+    expect(p.jumps).toBe(0) // budget unchanged
+    expect(p.vy).toBe(vyBefore) // velocity untouched (no new launch)
+    expect(p.dashing).toBe(true) // still in the burst, not cancelled
+  })
+
+  it('a slide buffered during dash fires on landing', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    p.dash()
+    p.slide() // buffered during the burst
+    expect(p._slideQueued).toBe(true)
+    // Fall to the ground; the buffered slide should fire.
+    let slid = false
+    for (let i = 0; i < 200 && !slid; i++) {
+      p.update(0.016)
+      if (p.sliding) slid = true
+    }
+    expect(slid).toBe(true)
+  })
+})

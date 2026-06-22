@@ -151,10 +151,37 @@ function slidingState() {
   }
 }
 
+// Shared: a jump pressed mid-dash / mid-snap-back cancels the burst and launches
+// immediately, so the player keeps air control instead of eating a ~0.4s dead
+// window (DASH_DURATION + SNAP_BACK_TIME) where input was silently dropped.
+// Returns 'running' (with the jump applied) or null to stay in the state.
+function jumpOutOfBurst(p) {
+  if (p.jumps <= 0) return null
+  p.vy = (p.jumps === 2 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY) * p.S
+  p.jumps--
+  p.grounded = false
+  p.dashing = false
+  p.snappingBack = false
+  p.x = Math.round(PLAYER_X * p.S) // settle back to home X so the launch is clean
+  p._lastFloats.push(p._float('↑', 0, -4, COLORS.white, 20))
+  p._emit('jump')
+  return 'running'
+}
+
 function dashingState() {
   return {
     enter(_prev, _payload, p) {
       p.dashing = true
+    },
+    on(event, _payload, p) {
+      if (event === 'intent:jump') return jumpOutOfBurst(p)
+      // Buffer a slide pressed during the dash burst: it fires on natural
+      // landing (same air-slide path as running), instead of being dropped.
+      if (event === 'intent:slide' && !p.grounded) {
+        p._slideQueued = true
+        return null
+      }
+      return null
     },
     update(dt, p) {
       applyGravity(dt, p)
@@ -180,10 +207,30 @@ function snapBackState() {
     enter(_prev, _payload, p) {
       p.snappingBack = true
     },
+    on(event, _payload, p) {
+      if (event === 'intent:jump') return jumpOutOfBurst(p)
+      if (event === 'intent:slide' && !p.grounded) {
+        p._slideQueued = true
+        return null
+      }
+      return null
+    },
     update(dt, p) {
+      const wasGrounded = p.grounded
       applyGravity(dt, p)
       applyDashCooldown(dt, p)
       applyInvincibility(dt, p)
+      // Consume a slide buffered during dash/snap-back if we land here before
+      // returning to running (otherwise the queued slide would be dropped).
+      if (p._slideQueued && !wasGrounded && p.grounded) {
+        p._slideQueued = false
+        p.slideTimer = SLIDE_DURATION
+        p.snappingBack = false
+        p._lastFloats.push(p._float('SLIDE!', 0, -16, '#9b59b6', 22))
+        p._emit('slide')
+        p.x = Math.round(PLAYER_X * p.S)
+        return p.fsm.transition('sliding')
+      }
       p._snapTimer -= dt
       const homeX = Math.round(PLAYER_X * p.S)
       const t = 1 - Math.max(0, p._snapTimer / SNAP_BACK_TIME)

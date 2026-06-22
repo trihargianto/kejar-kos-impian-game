@@ -38,7 +38,10 @@ export class Hud {
    */
   draw(ctx, game, snap) {
     const { width: W, scale: S, safeTop } = game
-    const TOP = safeTop + 8
+    // Push the HUD stack below the kasta progress bar row (HorizonGoal draws it
+    // at ~safeTop+12). Starting lower gives the bar its own clean top row and
+    // keeps the lives off the bar's left label.
+    const TOP = safeTop + 26
     const fs = (n) => Math.round(n * S)
 
     // ── Lives — top left ────────────────────────────────────────────────────

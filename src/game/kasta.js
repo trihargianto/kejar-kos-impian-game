@@ -105,6 +105,16 @@ export function getNextKastaThreshold(dist) {
   return null
 }
 
+// Distance (m) → next kasta definition (the tier you're filling toward), or
+// null if the player is already on the final tier. Used by the progress bar to
+// label what's coming.
+export function getNextKastaDef(dist) {
+  for (const def of KASTA_DEFS) {
+    if (def.fromMeters > dist) return def
+  }
+  return null
+}
+
 // Re-export thresholds for backward compatibility with constants.js consumers.
 // Reads KASTA_METERS directly — the single knob — not the records.
 export const KASTA_THRESHOLDS = Object.freeze({

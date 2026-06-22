@@ -5,7 +5,8 @@
 // is always on screen, not just a distance number.
 //
 // Pure draw from a (dist) snapshot. Drawn behind obstacles/player, above the bg.
-import { getKastaDef, getNextKastaThreshold } from '../../kasta.js'
+import { getKastaDef, getNextKastaThreshold, getNextKastaDef } from '../../kasta.js'
+import { COLORS } from '../../theme.js'
 
 const GATE = 1000 // meters to Mode Kos Impian
 
@@ -66,13 +67,16 @@ export class HorizonGoal {
   }
 
   // Kasta-progress bar — pinned to the very top edge (above the HUD score/combo
-  // stack) so it never collides with that text. Shows how close the player is to
-  // the next kasta threshold / the 1000m gate; a house marker sits at the goal
-  // end. This is the ONLY "distance to next tier" indicator now (the ground
-  // strip's duplicate text was removed).
+  // stack) so it never collides with that text. Both ends are labeled: the
+  // current kasta (where you are) under the bar's left, the next kasta (what
+  // you're filling toward) under the right by the house marker. This single
+  // element answers "where am I / what's next" — it replaced the ground strip's
+  // ugly "KASTA: ..." line, which is gone. At the final tier there's no "next",
+  // so the right end shows the endless goal.
   _drawProgressBar(ctx, game, dist, kasta) {
     const { width: W, scale: S, safeTop } = game
     const next = getNextKastaThreshold(dist) ?? GATE
+    const nextDef = getNextKastaDef(dist)
     const prevThreshold = kasta.fromMeters
     const span = Math.max(1, next - prevThreshold)
     const frac = Math.min(1, Math.max(0, (dist - prevThreshold) / span))
@@ -92,11 +96,25 @@ export class HorizonGoal {
     ctx.roundRect(x, y, Math.round(w * frac), h, h / 2)
     ctx.fill()
 
-    // Little house marker at the end of the bar — the goal you're filling toward.
-    ctx.fillStyle = dist >= GATE ? '#f1c40f' : '#7d8aa8'
-    ctx.font = `${Math.round(12 * S)}px monospace`
+    // End labels, just under the bar. Current at the left, next at the right.
+    const labelY = y + h + Math.round(11 * S)
+    ctx.font = `${Math.round(9 * S)}px monospace`
+
+    ctx.textAlign = 'left'
+    ctx.fillStyle = COLORS.mutedSoft
+    ctx.fillText(kasta.label, x, labelY)
+
+    // Right end: the next tier you're heading toward, or the endless goal at the
+    // final tier. A house marker sits just past the bar end as the destination.
+    ctx.textAlign = 'right'
+    ctx.fillStyle = nextDef ? '#b07d3a' : '#caa24a'
+    const rightLabel = nextDef ? nextDef.label : 'KOS IMPIAN ∞'
+    ctx.fillText(rightLabel, x + w, labelY)
+
+    ctx.fillStyle = dist >= GATE ? '#f1c40f' : '#b07d3a'
+    ctx.font = `${Math.round(11 * S)}px monospace`
     ctx.textAlign = 'center'
-    ctx.fillText('⌂', x + w + Math.round(10 * S), y + h + Math.round(4 * S))
+    ctx.fillText('⌂', x + w + Math.round(9 * S), y + h + Math.round(2 * S))
   }
 }
 

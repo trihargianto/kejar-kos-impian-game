@@ -67,8 +67,8 @@ src/game/
 │       ├── ComboSystem.js     # Near-miss multiplier + decay
 │       ├── CollectibleSystem.js # Coin + power-up spawn, pickup (coins feed combo + budget)
 │       ├── PromptDirector.js  # Milestone story prompts
-│       ├── HorizonGoal.js     # Skyline dream-kos building + next-tier progress bar
-│       ├── GroundPanel.js     # Ground strip: parallax detail, budget badge (MODAL KOS), kasta label + KOPI chip
+│       ├── HorizonGoal.js     # Skyline dream-kos building + progress bar labeled both ends (current → next kasta)
+│       ├── GroundPanel.js     # Ground strip: parallax detail, budget badge (MODAL KOS), KOPI chip
 │       └── Hud.js             # Top HUD: lives, distance headline, score, combo badge + decay bar (pure draw)
 │
 └── systems/                   # Cross-scene logic

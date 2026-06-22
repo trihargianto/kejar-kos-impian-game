@@ -9,14 +9,12 @@
 //      at the §IX reveal (coins ARE the budget, so we surface the real number
 //      the run is building toward, not a bare "Rp 12" count that read as 12
 //      rupiah). A small coin tally rides alongside.
-//   3. Kasta label + KOPI boost chip — current tier name; the active Kopi Sachet
-//      timer sits here too so both buffs aren't scattered (SANDAL ammo lives on
-//      its THROW button). Distance-to-next-tier is NOT repeated here — that's
-//      the top progress bar's job (HorizonGoal).
+//   3. KOPI boost chip — the active Kopi Sachet timer (SANDAL ammo lives on its
+//      THROW button). The kasta name + progress now live entirely on the top
+//      progress bar (HorizonGoal), so there's no tier text down here anymore.
 //
 // The cluster lives bottom-RIGHT, so these panels hug the LEFT to avoid it.
 import { COLORS, FONTS } from '../../theme.js'
-import { getKastaDef } from '../../kasta.js'
 import { formatPrice } from '../../systems/dreamKos.js'
 
 export class GroundPanel {
@@ -28,7 +26,7 @@ export class GroundPanel {
   draw(ctx, game, snap) {
     this._drawScrollingGround(ctx, game, snap.dist)
     this._drawBudgetBadge(ctx, game, snap)
-    this._drawTierStrip(ctx, game, snap)
+    this._drawBuffs(ctx, game, snap)
   }
 
   // ── 1. Parallax foreground tiles ────────────────────────────────────────────
@@ -92,36 +90,28 @@ export class GroundPanel {
     ctx.fillText(budgetStr, x + padX, y + Math.round(30 * S))
   }
 
-  // ── 3. Kasta label + KOPI boost chip ──────────────────────────────────────────
-  _drawTierStrip(ctx, game, snap) {
+  // ── 3. KOPI boost chip ─────────────────────────────────────────────────────
+  // Only while the Kopi Sachet window is active. Pill with a countdown so the
+  // player knows how long the speed + immunity lasts. Sits just under the budget
+  // badge (the kasta name moved to the top progress bar).
+  _drawBuffs(ctx, game, snap) {
+    if ((snap.boostTimer ?? 0) <= 0) return
     const { scale: S, floorY } = game
     const x = Math.round(12 * S)
-    const y = floorY + Math.round(72 * S)
-
-    const kasta = getKastaDef(snap.dist)
-    ctx.textAlign = 'left'
-    ctx.fillStyle = COLORS.mutedSoft
+    const chipY = floorY + Math.round(66 * S)
+    const label = `KOPI ${snap.boostTimer.toFixed(1)}s`
     ctx.font = `bold ${Math.round(10 * S)}px ${FONTS.mono}`
-    ctx.fillText(`KASTA: ${kasta.label}`, x, y)
+    const padX = Math.round(8 * S)
+    const w = ctx.measureText(label).width + padX * 2
+    const h = Math.round(16 * S)
 
-    // KOPI boost chip — only while the Kopi Sachet window is active. Pill with a
-    // countdown so the player knows how long the speed + immunity lasts.
-    if ((snap.boostTimer ?? 0) > 0) {
-      const chipY = y + Math.round(8 * S)
-      const label = `KOPI ${snap.boostTimer.toFixed(1)}s`
-      ctx.font = `bold ${Math.round(10 * S)}px ${FONTS.mono}`
-      const padX = Math.round(8 * S)
-      const w = ctx.measureText(label).width + padX * 2
-      const h = Math.round(16 * S)
+    ctx.fillStyle = '#6c3483'
+    ctx.beginPath()
+    ctx.roundRect(x, chipY, w, h, h / 2)
+    ctx.fill()
 
-      ctx.fillStyle = '#6c3483'
-      ctx.beginPath()
-      ctx.roundRect(x, chipY, w, h, h / 2)
-      ctx.fill()
-
-      ctx.fillStyle = '#fff'
-      ctx.textAlign = 'left'
-      ctx.fillText(label, x + padX, chipY + Math.round(11.5 * S))
-    }
+    ctx.fillStyle = '#fff'
+    ctx.textAlign = 'left'
+    ctx.fillText(label, x + padX, chipY + Math.round(11.5 * S))
   }
 }

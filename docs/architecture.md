@@ -161,8 +161,8 @@ pause) and polls `dashCd` via rAF for the DASH cooldown countdown.
 | `ComboSystem`       | Near-miss count, per-kasta multiplier cap, decay timer          |
 | `CollectibleSystem` | Coin + power-up spawn, pickup; coins feed combo + budget |
 | `PromptDirector`    | Distance-keyed milestone prompts, fired once each in order      |
-| `HorizonGoal`       | Skyline dream-kos building + next-tier progress bar (pure draw)  |
-| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, budget badge (coins → rupiah "MODAL KOS"), kasta label + KOPI boost chip — pure draw. Meters-to-next-tier is NOT here (top progress bar owns it) |
+| `HorizonGoal`       | Skyline dream-kos building + top progress bar labeled at BOTH ends (current kasta → next kasta, or "KOS IMPIAN ∞" at the final tier). Sole owner of kasta name + tier progress (pure draw) |
+| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, budget badge (coins → rupiah "MODAL KOS"), KOPI boost chip — pure draw. No kasta text (the top progress bar owns it now) |
 | `Hud`               | Top section: lives (left), distance headline (center), score subline, combo badge + decay bar (gold→red as the 5s window empties) — pure draw |
 
 ## Shared systems (cross-scene, under systems/)

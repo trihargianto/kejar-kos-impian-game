@@ -21,7 +21,7 @@ kejar-kos-impian-v2/
 │   ├── collision.test.js      # testObstacle outcomes
 │   ├── obstacles.test.js      # Obstacle zones / placement vs floorY
 │   ├── powerups.test.js       # Kopi/Sandal power-ups, sandal target-claim
-│   └── step2.test.js          # PromptDirector, dream-kos profile + matching
+│   └── step2.test.js          # PromptDirector, budget+tier reveal + chip re-roll
 └── src/
     ├── main.jsx               # React root render
     ├── App.jsx                # Renders <GameCanvas />
@@ -54,7 +54,7 @@ src/game/
 ├── entities/                  # Things that live in the world
 │   ├── Player.js              # FSM-driven runner (run/slide/dash/snapBack)
 │   ├── Obstacle.js            # Zoned obstacles + named kasta-twist specials
-│   ├── Collectible.js         # Coins (Recehan) + dream-kos facility tags
+│   ├── Collectible.js         # Coins (Recehan) + power-ups (Kopi/Sandal)
 │   └── FloatText.js           # Rising/fading text
 │
 ├── scenes/                    # Top-level game states
@@ -65,17 +65,17 @@ src/game/
 │       ├── SpawnDirector.js   # Spawn cadence + obstacle stream (kasta-aware)
 │       ├── CollisionSystem.js # Pure near-miss / collision / dash-break tests
 │       ├── ComboSystem.js     # Near-miss multiplier + decay
-│       ├── CollectibleSystem.js # Coin/item spawn, pickup, dream-kos profile
+│       ├── CollectibleSystem.js # Coin + power-up spawn, pickup (coins feed combo + budget)
 │       ├── PromptDirector.js  # Milestone story prompts
 │       ├── HorizonGoal.js     # Skyline dream-kos building + next-tier progress bar
-│       ├── GroundPanel.js     # Ground strip: parallax detail, coin badge, dream tracker
+│       ├── GroundPanel.js     # Ground strip: parallax detail, coin badge (budget), tier strip
 │       └── Hud.js             # In-play HUD (pure draw)
 │
 └── systems/                   # Cross-scene logic
-    ├── score.js               # Pure scoring/progression functions
-    ├── storage.js             # High-score persistence (localStorage)
+    ├── score.js               # Pure scoring/progression (rank, kasta, combo, score accumulator wired in PlayScene)
+    ├── storage.js             # High-score persistence (score = jarak × combo, not distance)
     ├── audio.js               # WebAudio synth SFX (EventBus listener)
-    └── dreamKos.js            # §IX listing matcher (curated fallback set)
+    └── dreamKos.js            # §IX reveal: budget (coins) + tier (dist) matcher + facility chips
 ```
 
 ## Where things go (cheat sheet)
@@ -89,7 +89,7 @@ src/game/
 | A new obstacle type           | `OBS_DEFS` (or `SPECIAL_DEFS`) in `entities/Obstacle.js`   |
 | Spawn logic                   | `scenes/play/SpawnDirector.js`                             |
 | Combo rules                   | `scenes/play/ComboSystem.js` + `systems/score.js`          |
-| A collectible / dream-kos tag | `entities/Collectible.js` + `CollectibleSystem.js`         |
+| A collectible (coin/power-up) | `entities/Collectible.js` + `CollectibleSystem.js`        |
 | A milestone prompt            | `PROMPTS` in `scenes/play/PromptDirector.js`               |
 | Dream-kos listings            | `LISTINGS` in `systems/dreamKos.js`                        |
 | A sound effect                | `systems/audio.js`                                         |

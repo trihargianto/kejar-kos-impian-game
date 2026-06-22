@@ -94,7 +94,7 @@ A scene is an object with optional `enter()`, `update(dt)`, `draw(ctx)`,
 | --------------- | ---------------------------------------------------------------------- |
 | `StartScene`    | Title + opening; waits for first input → `play`                        |
 | `PlayScene`     | The run loop orchestrator (see below)                                  |
-| `GameOverScene` | Final distance, comedic rank, **Kos Impian reveal**, high score, retry |
+| `GameOverScene` | Final distance + score, comedic rank, **Kos Impian reveal** (budget + tier, with tappable facility chips), high score, retry |
 
 ### PlayScene loop order
 
@@ -107,7 +107,7 @@ _handleInput       → route jump/slide/dash intents into the Player FSM
 player.update      → physics + state machine step
 _updateSpawning    → SpawnDirector emits obstacles (kasta-aware, vacuum twist)
 _updateObstacles   → scroll + CollisionSystem test (near-miss / collision / dash-break)
-_updateCollectibles→ scroll + pickup; coins feed combo, items build dream profile
+_updateCollectibles→ scroll + pickup; coins feed combo AND budget (currency → §IX reveal)
 combo.update       → near-miss multiplier decay
 _updateKasta       → detect tier change; emit KASTA_UP / IMPIAN_GATE
 _updatePrompts     → fire milestone story prompts
@@ -126,8 +126,9 @@ has time to land visually.
 - **Obstacle** — three zones (`floor` / `ceiling` / `mid`), each telegraphing
   one correct verb. `Obstacle.random()` draws from the pool; `Obstacle.special(id)`
   builds named kasta-twist obstacles (e.g. the vacuum).
-- **Collectible** — `coin` (Recehan) or `item` (facility tag). Scrolls like an
-  obstacle; resolution is a circle-vs-AABB test in `CollectibleSystem`.
+- **Collectible** — `coin` (Recehan, fuels combo + budget), `kopi` (Kopi Sachet
+  passive power-up), and `sandal` (Sandal Jepit active power-up). Scrolls like
+  an obstacle; resolution is a circle-vs-AABB test in `CollectibleSystem`.
 - **FloatText** — short-lived rising/fading text for combos, hits, prompts.
 
 ## Controls
@@ -153,20 +154,20 @@ pause) and polls `dashCd` via rAF for the DASH cooldown countdown.
 | `SpawnDirector`     | Spawn cadence + obstacle stream; injects vacuum on vacuum-kasta |
 | `CollisionSystem`   | Pure geometry: near-miss / collision / dash-break decisions     |
 | `ComboSystem`       | Near-miss count, per-kasta multiplier cap, decay timer          |
-| `CollectibleSystem` | Coin/item spawn, pickup, and the run's dream-kos profile        |
+| `CollectibleSystem` | Coin + power-up spawn, pickup; coins feed combo + budget |
 | `PromptDirector`    | Distance-keyed milestone prompts, fired once each in order      |
 | `HorizonGoal`       | Skyline dream-kos building + next-tier progress bar (pure draw)  |
-| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, coin badge, dream-kos tracker (tier + facility chips) — pure draw |
-| `Hud`               | Lives, score/distance, combo, power-ups (pure draw)             |
+| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, coin badge (budget), tier strip (kasta label + meters to next tier) — pure draw |
+| `Hud`               | Lives, score (jarak × combo), distance, combo, power-ups (pure draw) |
 
 ## Shared systems (cross-scene, under systems/)
 
 | Module     | Owns                                                                          |
 | ---------- | ----------------------------------------------------------------------------- |
-| `score`    | Pure scoring/progression: rank, kasta label, combo multiplier, near-miss text |
-| `storage`  | High-score persistence via `localStorage`, guarded for private mode           |
+| `score`    | Pure scoring/progression: rank, kasta label, combo multiplier, near-miss text. Score (jarak × combo multiplier) is accumulated in `PlayScene._updateDistance`, not here |
+| `storage`  | High-score persistence (score, not distance) via `localStorage`, guarded for private mode           |
 | `audio`    | WebAudio synth SFX subscribing to the EventBus (placeholder until real SFX)   |
-| `dreamKos` | §IX reveal: matches a collected facility profile to a curated listing         |
+| `dreamKos` | §IX reveal: matches budget (coins) + tier (distance) to a curated listing; result-screen facility chips re-roll within budget |
 
 ## Event flow
 
@@ -180,7 +181,7 @@ PlayScene / Player  ──emit──►  EventBus  ──►  AudioSystem (plays
 
 Catalog lives in `core/EventBus.js` (`EVENTS`). Key events: `GAME_START`,
 `PLAYER_JUMP/SLIDE/DASH/HIT/DEATH`, `NEAR_MISS`, `KASTA_UP`, `IMPIAN_GATE`,
-`PROMPT`, `COLLECT_COIN`, `COLLECT_ITEM`, `GAME_OVER`.
+`PROMPT`, `COLLECT_COIN`, `GAME_OVER`.
 
 ## Kasta progression (data-driven)
 
@@ -208,10 +209,11 @@ Consumers call `getKastaDef(dist)`; no switch chains.
 
 Pure logic is unit-tested without a canvas (`test/`):
 
-- `score.test.js` — ranks, kasta switch points, combo multiplier, near-miss text
+- `score.test.js` — ranks, kasta switch points, combo multiplier, near-miss
+  text, score accumulator (jarak × combo), storage persistence
 - `collision.test.js` — `testObstacle` outcomes against stub player/obstacle
 - `core.test.js` — `EventBus`, `StateMachine`, `Pool`
-- `step2.test.js` — `PromptDirector`, dream-kos profile + matching
+- `step2.test.js` — `PromptDirector`, budget+tier reveal matching + chip re-roll
 
 Draw code is deliberately thin and side-effect-free given a snapshot, so the
 testable surface stays in pure modules.

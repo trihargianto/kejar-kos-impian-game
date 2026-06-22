@@ -5,8 +5,11 @@ Mamikos Vibe Coding Contest. You play an anak kos who **sprints toward their
 dream kos** while the old life (Ibu Kos + bills) tries to drag them back. Every
 obstacle is a question: _play it safe, or graze it for combo?_
 
-The signature hook is the **Kos Impian reveal** — facility tags you collect
-during a run match you to a real-feeling kos listing on the game-over screen.
+The signature hook is the **Kos Impian reveal** — coins you collect during a
+run become your **budget**, the distance you reach sets the **tier** of kos you
+qualify for, and the game-over screen shows a real-feeling listing you can
+afford. Tap a facility chip (AC, WiFi, Dekat Kampus, K. Mandi Dalam) to
+re-roll within your budget.
 
 > Full game design lives in the GDD (Obsidian vault): _Kejar Kos Impian — Brief
 > Concepts_. This README and `docs/` cover the **code**, not the design.
@@ -21,7 +24,7 @@ during a run match you to a real-feeling kos listing on the game-over screen.
 | Audio         | WebAudio synth (placeholder SFX)             |
 | Tests         | Vitest                                       |
 | Lint / format | ESLint + Prettier                            |
-| Persistence   | `localStorage` (high score)                  |
+| Persistence   | `localStorage` (high score = skor: jarak × combo) |
 
 > The game engine is hand-rolled under `src/game/`. React only mounts the canvas
 > and forwards safe-area insets — all gameplay is plain JS, framework-agnostic

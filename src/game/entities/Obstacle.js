@@ -55,7 +55,7 @@ const OBS_DEFS = [
     h: 28,
     fill: '#5dade2',
     label: 'BURUNG\n(SLIDE)',
-    speedScale: 1.4,
+    speedScale: 1.15,
     bob: true, // cosmetic flap; draw-only
     getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 28 - SLIDE_CLEARANCE,
   },
@@ -67,7 +67,7 @@ const OBS_DEFS = [
     h: 20,
     fill: '#e67e22',
     label: 'SANDAL\n(SLIDE)',
-    speedScale: 1.45, // light + fast — Ibu Kos chucks it at your head
+    speedScale: 1.2, // light + slightly faster — Ibu Kos chucks it at your head
     bob: true,
     getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 20 - SLIDE_CLEARANCE,
   },
@@ -105,9 +105,9 @@ const OBS_DEFS = [
     h: 44,
     fill: '#16a085',
     label: 'GALON\n(SLIDE)',
-    // Heavier object → lower speedScale than bird/sandal so the bigger hitbox
-    // isn't unfair to react to.
-    speedScale: 1.25,
+    // Heavier object → barely above world speed so the bigger hitbox isn't
+    // unfair to react to.
+    speedScale: 1.1,
     bob: true,
     getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 44 - SLIDE_CLEARANCE,
   },
@@ -186,15 +186,28 @@ export class Obstacle {
   // return the tutorial-safe pool.
   //
   // Selection is VERB-BALANCED, not flat-uniform: pick a zone (verb) first with
-  // equal weight, then a def within it. A flat pick would skew toward whichever
-  // verb has the most defs (today: 4 floor/JUMP, 4 ceiling/SLIDE, 1 mid/DASH —
-  // a flat roll makes dash ~1-in-9). Balancing by zone keeps all three verbs
-  // exercised regardless of how many obstacle variants each one has. Zones with
-  // no eligible def at this tier are simply skipped.
+  // weighted-by-zone, then a def within it. A flat pick over defs would skew
+  // toward whichever verb has the most variants (today: 4 floor/JUMP,
+  // 4 ceiling/SLIDE, 1 mid/DASH). Picking the zone first keeps all three verbs
+  // alive regardless of variant count.
+  //
+  // Zone weights (not equal): JUMP is the most comfortable verb, so floor gets
+  // the largest share; SLIDE obstacles are flying objects that arrive faster, so
+  // ceiling is kept lower to avoid relentless duck-spam; DASH stays modest. This
+  // tilts the run toward the easy verb instead of an even 1/3 split that felt
+  // punishing once slide became flying objects. Zones absent at this tier are
+  // dropped and their weight ignored.
   static random(game, tier = 0) {
     const pool = OBS_DEFS.filter((d) => d.minKasta <= tier)
+    const ZONE_WEIGHT = { floor: 5, ceiling: 3, mid: 2 }
     const zones = [...new Set(pool.map((d) => d.zone))]
-    const zone = zones[Math.floor(Math.random() * zones.length)]
+    const total = zones.reduce((s, z) => s + (ZONE_WEIGHT[z] ?? 1), 0)
+    let r = Math.random() * total
+    let zone = zones[0]
+    for (const z of zones) {
+      r -= ZONE_WEIGHT[z] ?? 1
+      if (r <= 0) { zone = z; break }
+    }
     const inZone = pool.filter((d) => d.zone === zone)
     const def = inZone[Math.floor(Math.random() * inZone.length)]
     return new Obstacle(def, game)

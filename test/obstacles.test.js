@@ -95,15 +95,19 @@ describe('Flying slide obstacles (Area 5)', () => {
 
   it('flying objects carry speedScale > 1 (arrive faster than ground obstacles)', () => {
     const game = mkGame()
+    // Key by zone+label: "GALON" exists as both floor (JUMP, scale 1) and
+    // ceiling (SLIDE, flying) — keying by label alone would collide.
     const seen = {}
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 2000; i++) {
       const o = Obstacle.random(game, 1)
-      seen[o.label.split('\n')[0]] = o.speedScale
+      seen[o.zone + ':' + o.label.split('\n')[0]] = o.speedScale
     }
-    expect(seen['BURUNG']).toBeGreaterThan(1)
-    expect(seen['SANDAL']).toBeGreaterThan(1)
+    expect(seen['ceiling:BURUNG']).toBeGreaterThan(1)
+    expect(seen['ceiling:SANDAL']).toBeGreaterThan(1)
     // The thrown galon (ceiling) is heavier → slower than bird/sandal but still >1.
-    expect(seen['GALON']).toBeGreaterThan(1)
+    expect(seen['ceiling:GALON']).toBeGreaterThan(1)
+    // The floor galon (JUMP) stays at world speed.
+    expect(seen['floor:GALON']).toBe(1)
   })
 
   it('ground obstacles keep speedScale = 1 (world speed)', () => {
@@ -130,17 +134,21 @@ describe('Flying slide obstacles (Area 5)', () => {
     expect(bird.bounds.y).toBe(y0)
   })
 
-  it('verb selection is balanced — dash shows up far more than a flat pick would', () => {
+  it('verb selection is weighted but keeps every verb alive', () => {
     const game = mkGame()
+    const N = 3000
     const verbCount = { JUMP: 0, SLIDE: 0, DASH: 0 }
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < N; i++) {
       const o = Obstacle.random(game, 0)
       const verb = o.label.split('\n')[1].replace(/[()]/g, '')
       verbCount[verb]++
     }
-    // With 3 zones balanced, each verb ≈ 1/3. A flat pick over 6 tier-0 defs
-    // (4 jump+slide vs 1 dash) would give dash ~1/6. Assert dash ≥ 1/4 of rolls.
-    expect(verbCount.DASH).toBeGreaterThan(900 / 4)
+    // Tier-0 zone weights floor:ceiling:mid = 5:3:2 → JUMP 50%, SLIDE 30%,
+    // DASH 20%. JUMP (easiest verb) dominates; SLIDE (flying objects) is tamed
+    // below jump; DASH still appears well above a flat-by-def ~1/6 share.
+    expect(verbCount.JUMP).toBeGreaterThan(verbCount.SLIDE) // easy verb dominates
+    expect(verbCount.SLIDE).toBeGreaterThan(verbCount.DASH)
+    expect(verbCount.DASH / N).toBeGreaterThan(0.12) // dash never starved
   })
 })
 

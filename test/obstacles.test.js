@@ -137,15 +137,13 @@ describe('CollectibleDirector spawning', () => {
     expect(d.items.length).toBeGreaterThan(0)
   })
 
-  it('produces both coins and items over time', () => {
+  it('produces coins over time', () => {
     const game = mkGame()
     const d = new CollectibleDirector()
     d.reset()
     for (let i = 0; i < 600; i++) d.spawn(1 / 60, game, []) // ~10s
     const kinds = new Set(d.items.map((c) => c.kind))
     expect(kinds).toContain('coin')
-    // Items are rarer (ITEM_INTERVAL = 6s base) but should appear within 10s.
-    expect(kinds).toContain('item')
   })
 
   it('places coins near upcoming obstacles when present (GDD §VII greed)', () => {
@@ -183,7 +181,7 @@ describe('CollectibleDirector spawning', () => {
     expect(d.items[0].x).toBeGreaterThanOrEqual(game.width)
   })
 
-  it('never spawns coins or items overlapping an obstacle (regression)', () => {
+  it('keeps coins clear of obstacles across many forced spawns (regression)', () => {
     const game = mkGame()
     const d = new CollectibleDirector()
     d.reset()
@@ -200,7 +198,6 @@ describe('CollectibleDirector spawning', () => {
     // Force many spawns and assert nothing lands inside an obstacle's bounds.
     for (let i = 0; i < 400; i++) {
       d.coinTimer = 0
-      d.itemTimer = 0
       d.spawn(0.001, game, obstacles)
     }
     const overlaps = (c, b) => {
@@ -213,20 +210,5 @@ describe('CollectibleDirector spawning', () => {
     for (const c of d.items) {
       expect(overlaps(c, door.bounds)).toBe(false)
     }
-  })
-
-  it('feeds the dream profile when items are picked up', () => {
-    const game = mkGame()
-    const d = new CollectibleDirector()
-    d.reset()
-    // Spawn an item, then fake a pickup by calling update with a player bounds
-    // that overlaps the item. Profile should now contain the tag.
-    d.itemTimer = 0
-    d.spawn(0.001, game, [])
-    const item = d.items.find((c) => c.kind === 'item')
-    expect(item).toBeTruthy()
-    const playerBounds = { x: item.x - 5, y: item.y - 5, w: 10, h: 10 }
-    d.update(0.001, 0, playerBounds)
-    expect(d.dreamProfile().length).toBeGreaterThan(0)
   })
 })

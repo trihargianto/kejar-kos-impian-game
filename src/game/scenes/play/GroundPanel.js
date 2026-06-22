@@ -5,24 +5,25 @@
 //
 //   1. Scrolling foreground detail — ground tiles/cracks scrolling FASTER than
 //      the background (parallax), sells speed + depth. Spans the full strip.
-//   2. Coin badge — Recehan currency, bottom-left card (distance is top-center).
-//   3. Dream-kos tracker — current kasta tier + facility tags collected this run
-//      (most first). Progress toward the next tier is the top bar (HorizonGoal).
+//   2. Coin badge — Recehan currency (= §IX budget), bottom-left card.
+//   3. Tier strip — current kasta label + meters toward the next tier. The
+//      in-run facility-tag tracker is gone (facilities are now result-screen
+//      chips, not a mid-run collectible).
 //
-// The cluster lives bottom-RIGHT, so panels 2–3 hug the LEFT to avoid it.
+// The cluster lives bottom-RIGHT, so panels 2-3 hug the LEFT to avoid it.
 import { COLORS, FONTS } from '../../theme.js'
-import { getKastaDef } from '../../kasta.js'
+import { getKastaDef, getNextKastaThreshold } from '../../kasta.js'
 
 export class GroundPanel {
   /**
    * @param {CanvasRenderingContext2D} ctx
    * @param {{width:number,height:number,scale:number,floorY:number,safeBottom:number}} game
-   * @param {{dist:number, coins:number, dreamProfile:Array<{label:string,count:number}>}} snap
+   * @param {{dist:number, coins:number}} snap
    */
   draw(ctx, game, snap) {
     this._drawScrollingGround(ctx, game, snap.dist)
     this._drawCoinBadge(ctx, game, snap)
-    this._drawDreamTracker(ctx, game, snap)
+    this._drawTierStrip(ctx, game, snap.dist)
   }
 
   // ── 1. Parallax foreground tiles ────────────────────────────────────────────
@@ -78,46 +79,29 @@ export class GroundPanel {
     ctx.fillText(coinStr, x + padX, y + padY + Math.round(13 * S))
   }
 
-  // ── 3. Dream-kos tracker ─────────────────────────────────────────────────────
-  // Current kasta tier + facility tag chips collected this run (most-collected
-  // first, capped). Reinforces the goal: you're assembling a dream kos.
-  _drawDreamTracker(ctx, game, snap) {
+  // ── 3. Tier strip ────────────────────────────────────────────────────────────
+  // Current kasta label + how far to the next tier. Progress toward the next
+  // tier is also the top bar (HorizonGoal); this widget is just label + meters.
+  _drawTierStrip(ctx, game, dist) {
     const { scale: S, floorY } = game
     const x = Math.round(12 * S)
     const y = floorY + Math.round(58 * S)
 
-    // Heading shows the CURRENT kasta tier (replaces the old standalone
-    // "KASTA: …" HUD line). Progress toward the next tier is the top bar
-    // (HorizonGoal), so this widget is just tier + collected facility chips.
-    const kasta = getKastaDef(snap.dist)
+    const kasta = getKastaDef(dist)
     ctx.textAlign = 'left'
     ctx.fillStyle = COLORS.mutedSoft
     ctx.font = `bold ${Math.round(10 * S)}px ${FONTS.mono}`
     ctx.fillText(`KASTA: ${kasta.label}`, x, y)
 
-    // Tag chips — up to 4, most-collected first. Empty state nudges collecting.
-    const tags = (snap.dreamProfile || []).slice(0, 4)
-    const chipY = y + Math.round(8 * S)
-    const chipH = Math.round(18 * S)
-    let cx = x
-    if (tags.length === 0) {
-      ctx.fillStyle = COLORS.faint
-      ctx.font = `${Math.round(10 * S)}px ${FONTS.mono}`
-      ctx.fillText('kumpulkan fasilitas…', x, chipY + Math.round(13 * S))
+    const next = getNextKastaThreshold(dist)
+    const subY = y + Math.round(14 * S)
+    ctx.fillStyle = COLORS.faint
+    ctx.font = `${Math.round(10 * S)}px ${FONTS.mono}`
+    if (next === null) {
+      ctx.fillText('mode endless — teruskan!', x, subY)
     } else {
-      ctx.font = `${Math.round(10 * S)}px ${FONTS.mono}`
-      for (const t of tags) {
-        const label = t.count > 1 ? `${t.label} ×${t.count}` : t.label
-        const tw = ctx.measureText(label).width
-        const chipW = tw + Math.round(14 * S)
-        ctx.fillStyle = 'rgba(22,160,133,0.85)' // facility teal
-        ctx.beginPath()
-        ctx.roundRect(cx, chipY, chipW, chipH, Math.round(9 * S))
-        ctx.fill()
-        ctx.fillStyle = COLORS.white
-        ctx.fillText(label, cx + Math.round(7 * S), chipY + Math.round(13 * S))
-        cx += chipW + Math.round(6 * S)
-      }
+      ctx.fillText(`→ ${Math.max(0, Math.ceil(next - dist))}m lagi`, x, subY)
     }
   }
 }
+

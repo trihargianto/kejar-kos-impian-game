@@ -88,12 +88,10 @@ export class PlayScene {
       if (this.deathTimer <= 0) {
         this.game.lastDist = Math.floor(this.dist)
         this.game.lastCoins = this.coins
-        // Dream-kos profile drives the §IX reveal on the game-over screen.
-        this.game.lastDreamProfile = this.collectibles.dreamProfile()
+        // §IX reveal reads coins (budget) + distance (tier) at game over.
         this.game.events?.emit(EVENTS.GAME_OVER, {
           dist: this.game.lastDist,
           coins: this.coins,
-          dreamProfile: this.game.lastDreamProfile,
         })
         this.game.go('gameover')
       }
@@ -180,15 +178,15 @@ export class PlayScene {
     }
   }
 
-  // Recehan + Item Kos Impian (GDD §VII). Coins feed the combo (a near-miss-like
-  // reward) + currency; items build the dream-kos profile for the §IX reveal.
-  // Power-ups (Kopi Sachet passive + Sandal Jepit active) apply on pickup.
+  // Recehan (GDD §VII). Coins feed the combo (a near-miss-like reward) and the
+  // §IX budget (currency → rupiah band at game over). Power-ups (Kopi Sachet
+  // passive + Sandal Jepit active) apply on pickup.
   _updateCollectibles(dt) {
     const S = this.game.scale
     // Spawn first (cadence + greed placement near upcoming obstacles), then
     // scroll + resolve pickups. Spawn reads this.obs so coins land near traffic.
     this.collectibles.spawn(dt, this.game, this.obs)
-    const { coins, picked, powerups } = this.collectibles.update(
+    const { coins, powerups } = this.collectibles.update(
       dt,
       this.spd * S,
       this.player.bounds
@@ -203,14 +201,6 @@ export class PlayScene {
         new FloatText(`+${coins}`, p.x + p.w / 2, p.y - 50 * S, COLORS.gold, Math.round(20 * S))
       )
       this.game.events?.emit(EVENTS.COLLECT_COIN, { coins, total: this.coins })
-    }
-
-    for (const tag of picked) {
-      const p = this.player
-      this.game.floats.push(
-        new FloatText(tag.label, p.x + p.w / 2, p.y - 70 * S, '#16a085', Math.round(18 * S))
-      )
-      this.game.events?.emit(EVENTS.COLLECT_ITEM, { tag: tag.id })
     }
 
     for (const kind of powerups) {
@@ -430,13 +420,12 @@ export class PlayScene {
     // Horizon goal sits between sky and floor — the dream kos you're chasing.
     this.horizon.draw(ctx, this.game, this.dist)
     this.game.drawFloor(ctx)
-    // Ground-strip panels (scrolling detail + coin badge + dream tracker) fill
+    // Ground-strip panels (scrolling detail + coin badge + tier progress) fill
     // the bottom-left space freed by the raised floor. Drawn on the floor, under
     // obstacles/player so a passing obstacle still reads above the panel.
     this.groundPanel.draw(ctx, this.game, {
       dist: this.dist,
       coins: this.coins,
-      dreamProfile: this.collectibles.dreamProfile(),
     })
 
     this.collectibles.draw(ctx)

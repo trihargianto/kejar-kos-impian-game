@@ -1,13 +1,12 @@
 // ─── Collectible director ─────────────────────────────────────────────────────
-// Spawns Recehan (coins), Item Kos Impian (facility tags), and the two §VII
-// power-ups (Kopi Sachet passive, Sandal Jepit active). Scrolls them and
-// resolves pickups against the player. Owns the dream-kos profile (which tags
-// the player grabbed this run) so the §IX reveal can read it at game over.
+// Spawns Recehan (coins) and the two §VII power-ups (Kopi Sachet passive,
+// Sandal Jepit active). Scrolls them and resolves pickups against the player.
+// Coins drive BOTH the combo loop and the §IX budget (currency → budget at
+// game over); no dream-kos profile is collected mid-run.
 //
 // Greed placement (GDD §VII): coins sit in the floor/ceiling lanes near where
-// obstacles travel, so the most profitable line is also the riskiest. Items are
-// rarer and float mid-air to pull the player off a safe path. Power-ups are
-// rarer still — the GDD calls them out as "langka" (rare).
+// obstacles travel, so the most profitable line is also the riskiest. Power-ups
+// are rarer — the GDD calls them out as "langka" (rare).
 import {
   PLAYER_HEIGHT,
   JUMP_VELOCITY,
@@ -15,10 +14,9 @@ import {
   KOPI_INTERVAL,
   SANDAL_INTERVAL,
 } from '../../constants.js'
-import { Collectible, FACILITY_TAGS } from '../../entities/Collectible.js'
+import { Collectible } from '../../entities/Collectible.js'
 
 const COIN_INTERVAL = 0.9 // base seconds between coin spawns
-const ITEM_INTERVAL = 6.0 // base seconds between dream-kos item spawns
 const CLEARANCE = 16 // design-px gap kept between any collectible and obstacle
 
 // Lanes are computed at RUNTIME from game.floorY, NOT from raw design constants.
@@ -69,29 +67,18 @@ export class CollectibleDirector {
   constructor() {
     this.items = []
     this.coinTimer = 0
-    this.itemTimer = 0
     this.kopiTimer = 0
     this.sandalTimer = 0
-    this.profile = new Map() // tag.id → count collected this run
   }
 
   reset() {
     this.items = []
     this.coinTimer = COIN_INTERVAL
-    this.itemTimer = ITEM_INTERVAL * 0.6 // first item comes a bit sooner
     // Power-ups are "langka" (rare) but the FIRST one comes early (half the
     // base interval) so first-time players actually see one before they die —
     // otherwise a 22s+ first spawn means most short runs never discover them.
     this.kopiTimer = KOPI_INTERVAL * 0.5
     this.sandalTimer = SANDAL_INTERVAL * 0.5
-    this.profile.clear()
-  }
-
-  // The dream-kos tags collected this run, most-collected first. Drives §IX.
-  dreamProfile() {
-    return [...this.profile.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, count]) => ({ ...FACILITY_TAGS.find((t) => t.id === id), count }))
   }
 
   // Returns the obstacle closest to the right edge that is still approaching
@@ -110,17 +97,12 @@ export class CollectibleDirector {
   // greedily near upcoming traffic (GDD §VII). Pass [] when unavailable.
   spawn(dt, game, obstacles = []) {
     this.coinTimer -= dt
-    this.itemTimer -= dt
     this.kopiTimer -= dt
     this.sandalTimer -= dt
 
     if (this.coinTimer <= 0) {
       this.coinTimer = COIN_INTERVAL * (0.7 + Math.random() * 0.6)
       this._spawnCoinRun(game, obstacles)
-    }
-    if (this.itemTimer <= 0) {
-      this.itemTimer = ITEM_INTERVAL * (0.8 + Math.random() * 0.5)
-      this._spawnItem(game, obstacles)
     }
     if (this.kopiTimer <= 0) {
       this.kopiTimer = KOPI_INTERVAL * (0.85 + Math.random() * 0.4)
@@ -169,20 +151,6 @@ export class CollectibleDirector {
     }
   }
 
-  // One dream-kos item, mid/high lane, kept clear of obstacles. Tries both
-  // lanes before giving up so it never spawns buried in a door/pillar.
-  _spawnItem(game, obstacles = []) {
-    const tag = FACILITY_TAGS[Math.floor(Math.random() * FACILITY_TAGS.length)]
-    const L = lanesFor(game)
-    const margin = Math.round(CLEARANCE * game.scale)
-    const itemR = Math.round(18 * game.scale) // matches ITEM_R in Collectible
-    const x = game.width + itemR * 2 // matches Collectible constructor x
-    const order = Math.random() < 0.5 ? [L.MID, L.HIGH] : [L.HIGH, L.MID]
-    const lane = order.find((y) => clearsObstacles(x, y, itemR, obstacles, margin))
-    if (lane === undefined) return // both lanes blocked — skip rather than overlap
-    this.items.push(new Collectible('item', game, lane, tag))
-  }
-
   // Kopi Sachet (passive power-up, GDD §VII). Rare + greedy: spawns in MID or
   // HIGH lane so the player has to commit to a jump to grab it. If both air
   // lanes are blocked by traffic, skip this cycle rather than bury it.
@@ -213,12 +181,10 @@ export class CollectibleDirector {
   }
 
   // Scroll + resolve. Returns:
-  //   coins     — number of coins collected this frame (combo fuel + currency)
-  //   picked    — array of dream-kos tags collected (for floats / events)
+  //   coins     — number of coins collected this frame (combo fuel + budget)
   //   powerups  — array of kind strings ('kopi' | 'sandal') collected this frame
   update(dt, speed, playerBounds) {
     let coins = 0
-    const picked = []
     const powerups = []
     for (let i = this.items.length - 1; i >= 0; i--) {
       const c = this.items[i]
@@ -227,9 +193,6 @@ export class CollectibleDirector {
         c.collected = true
         if (c.kind === 'coin') {
           coins++
-        } else if (c.kind === 'item' && c.tag) {
-          this.profile.set(c.tag.id, (this.profile.get(c.tag.id) ?? 0) + 1)
-          picked.push(c.tag)
         } else if (c.kind === 'kopi' || c.kind === 'sandal') {
           powerups.push(c.kind)
         }
@@ -238,7 +201,7 @@ export class CollectibleDirector {
       }
       if (c.offscreen) this.items.splice(i, 1)
     }
-    return { coins, picked, powerups }
+    return { coins, powerups }
   }
 
   draw(ctx) {

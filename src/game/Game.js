@@ -28,6 +28,7 @@ export class Game {
     this.audio = new AudioSystem(this.events)
     this.floats = []
     this.lastDist = 0
+    this.lastCoins = 0
     this.safeTop = safeTop
     this.safeBottom = safeBottom
 

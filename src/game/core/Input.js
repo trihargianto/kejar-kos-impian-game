@@ -15,11 +15,16 @@ export class Input {
       this.keys[e.code] = false
     }
     // All in-play actions (jump/slide/dash/throw) are on-screen buttons now —
-    // see GameCanvas. So touch here does ONE thing: a tap emits `Tap`, which
-    // INTENT.confirm uses to advance the Start / GameOver menus (those screens
-    // have no buttons). No swipe/gesture parsing, no tap-vs-swipe ambiguity.
+    // see GameCanvas. So touch here does TWO things: emit a `Tap` edge (used by
+    // INTENT.confirm to advance Start/GameOver menus), AND record the tap
+    // position in canvas-CSS-px space so scenes can hit-test in-canvas targets
+    // (e.g. the facility chips on the result screen). Position is cleared each
+    // flush alongside the edge, so a tap is consumed exactly once.
     this._onTouchStart = (e) => {
       e.preventDefault() // block page scroll/zoom on the canvas
+      const rect = this._canvas.getBoundingClientRect()
+      const t = e.touches?.[0]
+      if (t) this._tapPos = { x: t.clientX - rect.left, y: t.clientY - rect.top }
       this._justPressed.Tap = true
     }
 
@@ -43,6 +48,12 @@ export class Input {
     return !!this._justPressed[code]
   }
 
+  // Position (canvas-CSS-px) of the most recent Tap edge this frame, or null if
+  // no tap. Cleared on flush. Scenes use this for in-canvas hit-testing.
+  get tapPos() {
+    return this._tapPos ?? null
+  }
+
   // True if any of the given codes had a fresh press this frame.
   anyPressed(codes) {
     return codes.some((c) => this._justPressed[c])
@@ -54,6 +65,7 @@ export class Input {
 
   flush() {
     this._justPressed = {}
+    this._tapPos = null
   }
 
   destroy() {

@@ -84,7 +84,6 @@ export class AudioSystem {
     sub(EVENTS.PLAYER_DASH, () => this._tone(220, 0.16, 'sawtooth', 0.16, 660))
     sub(EVENTS.PLAYER_HIT, () => this._noise(0.2, 0.24)) // ember jatuh
     sub(EVENTS.COLLECT_COIN, () => this._tone(880, 0.08, 'triangle', 0.14, 1180))
-    sub(EVENTS.COLLECT_ITEM, () => this._tone(660, 0.16, 'triangle', 0.16, 990))
 
     // Power-ups (GDD §VII). Kopi pickup = warm rising chord; sandal pickup =
     // short bright blip. Throw = percussive thwack; boost start = zoom-up tone.

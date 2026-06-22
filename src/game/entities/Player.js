@@ -123,6 +123,16 @@ function slidingState() {
         p._emit('jump')
         return 'running'
       }
+      if (event === 'intent:slide') {
+        // Re-press while sliding starts a fresh slide: reset the timer to a full
+        // SLIDE_DURATION from now. Tapping repeatedly keeps the slide going
+        // (effectively hold-to-slide), so the player can ride out a long stretch
+        // of ceiling obstacles by re-pressing instead of being forced up.
+        p.slideTimer = SLIDE_DURATION
+        p._lastFloats.push(p._float('SLIDE!', 0, -16, '#9b59b6', 20))
+        p._emit('slide')
+        return null // stay in sliding
+      }
       return null
     },
     update(dt, p) {

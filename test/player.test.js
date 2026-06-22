@@ -57,6 +57,34 @@ describe('Player air-slide (buffered; fires on natural landing)', () => {
     expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5)
   })
 
+  it('re-pressing SLIDE while sliding restarts the slide timer (fresh slide)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide() // enter slide (grounded)
+    expect(p.sliding).toBe(true)
+    // Burn ~0.3s of the slide, then re-press.
+    for (let i = 0; i < 18; i++) p.update(0.016) // ~0.29s
+    const before = p.slideTimer
+    expect(before).toBeLessThan(SLIDE_DURATION) // some time already elapsed
+    p.slide() // fresh slide
+    expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5) // reset to full, not stacked
+    expect(p.sliding).toBe(true)
+  })
+
+  it('tapping SLIDE repeatedly keeps the player sliding (hold-to-slide)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide()
+    // Re-press every ~0.5s for well past a single SLIDE_DURATION; never drops.
+    for (let i = 0; i < 120; i++) {
+      p.update(0.016)
+      if (i % 30 === 0) p.slide() // tap roughly twice per second
+      expect(p.sliding).toBe(true)
+    }
+  })
+
   it('jump after an air-slide press cancels the queue', () => {
     const p = new Player(mkGame())
     p.reset()

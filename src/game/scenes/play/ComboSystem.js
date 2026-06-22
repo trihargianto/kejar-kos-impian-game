@@ -5,6 +5,22 @@
 // The cap is per-kasta — Singgahsini allows higher multipliers than Kipas
 // Angin, and Mode Kos Impian releases the cap entirely. Pass the current kasta
 // def to update() so the cap is always live.
+//
+// Score wiring verification (Area 3): score = dM × combo.mult per frame, so the
+// curve + caps directly govern how swingy score feels. Re-checked after the
+// score accumulator landed:
+//   • Curve `2^floor(combo/2)` doubles every 2 near-misses; per-tier caps
+//     (8/16/24/∞) bound swinginess inside a tier. Unchanged — feels right.
+//   • gainSmall (sandal) advances combo but does NOT recompute mult, so a
+//     sandal-only run scores at mult=1 (no near-miss → no doubling). Near-miss
+//     strictly outscores sandal-spam; sandal's role is to bridge decay gaps.
+//   • Greed loop payoff ranking holds:
+//       aggressive near-miss + greedy coin grab > safe coin grab > pure dodge
+//     Greedy coins call gain() (full combo event), which is what makes them
+//     "greedy" — the mult payoff pulls the player into traffic. A safe grabber
+//     who skips risky coins hits fewer combo events per meter, so their mult
+//     ramps slower and they score less even if they reach the same cap.
+//   • COMBO_DECAY_TIME = 5.0s matches the GDD; no change.
 import { COMBO_DECAY_TIME } from '../../constants.js'
 import { comboMultiplier as computeMult } from '../../systems/score.js'
 

@@ -126,6 +126,8 @@ export class PlayScene {
       (BASE_SPEED + (this.dist / 10) * SPEED_RAMP) * (kasta.speedMultiplier ?? 1) * boostMult
     // Feed the kasta's friction into the player so lantai licin lengthens dashes.
     this.player.friction = kasta.frictionMultiplier ?? 1
+    // Share world speed so the run-cycle animation paces its legs to the ground.
+    this.player.worldSpeed = this.spd
   }
 
   _updateDistance(dt) {

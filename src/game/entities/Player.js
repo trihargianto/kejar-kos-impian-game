@@ -286,6 +286,7 @@ export class Player {
     this.dashCd = 0
     this.invTimer = 0
     this.friction = 1 // <1 = lantai licin (kasta twist); set by the scene each frame
+    this.worldSpeed = 0 // current world scroll speed (px/s); set by the scene each frame
     // Power-ups (GDD §VII)
     this.boostTimer = 0 // Kopi Sachet speed-boost window; speed mult applies while > 0
     this.sandals = 0 // Sandal Jepit ammo (reset to SANDAL_AMMO on pickup)
@@ -293,6 +294,10 @@ export class Player {
     this._snapTimer = 0
     this.snappingBack = false
     this._slideQueued = false // air-slide buffer; consumed on natural landing
+    // Run-cycle phase (radians). Advances only while grounded-running so the
+    // single run sprite gets a procedural bob/tilt/squash and reads as alive
+    // instead of a stiff static decal. Frozen while airborne/sliding/dashing.
+    this._runPhase = 0
     this._lastFloats = []
     this.fsm = new StateMachine(
       'running',
@@ -429,52 +434,114 @@ export class Player {
   update(dt) {
     this.fsm.update(dt)
     if (this.boostTimer > 0) this.boostTimer -= dt
+    // Advance the run cycle only when actually pounding the floor. Airborne /
+    // sliding / dashing freeze it (their own poses read the motion), and we ease
+    // back toward a neutral foot-plant so resuming the run doesn't pop.
+    const running = this.grounded && !this.sliding && !this.dashing
+    if (running) {
+      // ~2 steps/sec base, scaled up with the world so legs match ground speed.
+      const stride = 10 + (this.worldSpeed ?? 0) * 0.012
+      this._runPhase += dt * stride
+    }
   }
 
-  // ── Drawing (unchanged visuals) ─────────────────────────────────────────────
+  // ── Drawing ─────────────────────────────────────────────────────────────────
+  // Sprite-first with placeholder fallback (GDD §XVI Step 4). Sprites are sized
+  // to the hitbox (run 52:76, slide 52:38), so drawImage targets the same rect
+  // the collision system reads — no offset. Sliding uses the slide sprite; jump
+  // reuses the run sprite until a jump pose exists.
   draw(ctx) {
     const S = this.S
     const h = this.height
     const drawY = this.sliding ? this.floorY - this.baseH / 2 : this.y
-    const visible = this.invTimer <= 0 || Math.floor(this.invTimer * 12) % 2 === 0
+    // Damage i-frames: invTimer is set by BOTH a hit and Kopi Sachet immunity
+    // (they share the timer). The blink + hurt pose are a DAMAGE tell, so gate
+    // them on "hurt but not boosting" — Kopi immunity must not look like injury.
+    const hurting = this.invTimer > 0 && !this.boosting
+    const visible = !hurting || Math.floor(this.invTimer * 12) % 2 === 0
+
+    // Pose priority: hurt (damage i-frames only) → slide → airborne jump → run.
+    // Each falls back to run if its sprite is missing, and run falls back to the
+    // placeholder. Hurt wins so the recoil pose reads during the blink window.
+    const assets = this.game.assets
+    let spriteId = 'player:run'
+    if (hurting && assets?.has('player:hurt')) spriteId = 'player:hurt'
+    else if (this.sliding) spriteId = 'player:slide'
+    else if (!this.grounded && assets?.has('player:jump')) spriteId = 'player:jump'
+    const sprite = assets?.has(spriteId) ? assets.image(spriteId) : null
 
     if (visible) {
-      ctx.fillStyle = COLORS.player
-      roundRect(ctx, this.x, drawY, this.w, h, Math.round(5 * S))
-
-      if (!this.sliding) {
-        const eyeX = this.x + this.w * 0.65
-        const eyeY = drawY + Math.round(14 * S)
-        const eyeR = Math.round(5 * S)
-        ctx.fillStyle = COLORS.playerEye
-        ctx.beginPath()
-        ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = COLORS.playerPupil
-        ctx.beginPath()
-        ctx.arc(
-          eyeX + Math.round(1.5 * S),
-          eyeY + Math.round(S),
-          Math.round(2.5 * S),
-          0,
-          Math.PI * 2
-        )
-        ctx.fill()
-      }
-
+      // Dash echo: faint trailing copies behind the player to sell the burst.
       if (this.dashing) {
+        ctx.save()
         for (let i = 1; i <= 3; i++) {
-          ctx.fillStyle = `rgba(231,76,60,${0.3 - i * 0.08})`
-          roundRect(
-            ctx,
-            this.x - i * Math.round(14 * S),
-            drawY + Math.round(4 * S),
-            this.w,
-            h - Math.round(8 * S),
-            Math.round(5 * S)
-          )
+          ctx.globalAlpha = 0.3 - i * 0.08
+          const ex = this.x - i * Math.round(14 * S)
+          if (sprite) ctx.drawImage(sprite, ex, drawY, this.w, h)
+          else {
+            ctx.fillStyle = COLORS.player
+            roundRect(ctx, ex, drawY + Math.round(4 * S), this.w, h - Math.round(8 * S), Math.round(5 * S))
+          }
         }
+        ctx.restore()
       }
+
+      if (sprite) {
+        this._drawRunnerSprite(ctx, sprite, drawY, h)
+      } else {
+        this._drawPlaceholder(ctx, S, h, drawY)
+      }
+    }
+  }
+
+  // Draw the sprite with a procedural run cycle so the single static frame reads
+  // as a real run: a vertical bob (two foot-plants per stride), a slight squash
+  // at the bottom of each plant, and a small forward lean. Only active while
+  // grounded-running; airborne/sliding/dashing draw the sprite flat (their pose
+  // already conveys motion). The transform pivots on the feet so the hitbox top
+  // (drawY) and collision are untouched — purely cosmetic.
+  _drawRunnerSprite(ctx, sprite, drawY, h) {
+    const running = this.grounded && !this.sliding && !this.dashing
+    if (!running) {
+      ctx.drawImage(sprite, this.x, drawY, this.w, h)
+      return
+    }
+    const p = this._runPhase
+    // |sin| → two plants per cycle. Body rides UP between plants (negative bob).
+    const bob = -Math.abs(Math.sin(p)) * h * 0.05
+    // Squash: shortest at the foot-plant (sin≈0), tallest mid-air-step.
+    const squash = 1 - (1 - Math.abs(Math.sin(p))) * 0.06
+    const lean = 0.06 // radians forward tilt while running
+
+    const cx = this.x + this.w / 2
+    const feetY = drawY + h
+    ctx.save()
+    ctx.translate(cx, feetY)
+    ctx.rotate(lean)
+    ctx.translate(-cx, -feetY)
+    const sh = h * squash
+    ctx.drawImage(sprite, this.x, feetY - sh + bob, this.w, sh)
+    ctx.restore()
+  }
+
+  // Original primitive-shape player: red rounded body + eye. Kept as the fallback
+  // while a sprite is missing/loading so the game never renders an empty player.
+  _drawPlaceholder(ctx, S, h, drawY) {
+    ctx.fillStyle = COLORS.player
+    roundRect(ctx, this.x, drawY, this.w, h, Math.round(5 * S))
+
+    if (!this.sliding) {
+      const eyeX = this.x + this.w * 0.65
+      const eyeY = drawY + Math.round(14 * S)
+      const eyeR = Math.round(5 * S)
+      ctx.fillStyle = COLORS.playerEye
+      ctx.beginPath()
+      ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = COLORS.playerPupil
+      ctx.beginPath()
+      ctx.arc(eyeX + Math.round(1.5 * S), eyeY + Math.round(S), Math.round(2.5 * S), 0, Math.PI * 2)
+      ctx.fill()
     }
 
     ctx.fillStyle = COLORS.inkSoft

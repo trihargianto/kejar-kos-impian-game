@@ -9,6 +9,7 @@ import { Shake } from './core/Shake.js'
 import { SceneManager } from './core/SceneManager.js'
 import { EventBus, EVENTS } from './core/EventBus.js'
 import { AssetLoader } from './assets/AssetLoader.js'
+import { MANIFEST } from './assets/manifest.js'
 import { AudioSystem } from './systems/audio.js'
 import { StartScene } from './scenes/StartScene.js'
 import { PlayScene } from './scenes/PlayScene.js'
@@ -24,6 +25,10 @@ export class Game {
     this.shake = new Shake()
     this.events = new EventBus()
     this.assets = new AssetLoader()
+    // Fire-and-forget: sprites stream in while the loop already runs. Until an
+    // image is cached, entities fall back to placeholder rendering, then swap
+    // automatically once it lands (GDD §XVI Step 4 — non-blocking swap).
+    this.assets.load(MANIFEST)
     // SFX subscribes to the event bus; placeholder WebAudio synth until Step 4.
     this.audio = new AudioSystem(this.events)
     this.floats = []

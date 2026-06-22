@@ -22,15 +22,15 @@ export class GameOverScene {
     this.time = 0
     this.dist = this.game.lastDist
     this.coins = this.game.lastCoins ?? 0
+    this.score = this.game.lastScore ?? 0
     this.budget = budgetFromCoins(this.coins)
     this.tier = getKastaDef(this.dist).tier
     // §IX reveal: pick a listing within budget at the highest tier reached.
     this.activeChip = null
     this._reroll()
-    // High-score = score (jarak × combo), persisted in storage (Area 2 wiring).
-    // Until then this falls back to distance, matching the previous behaviour.
-    this.highScore = submitScore(this.dist)
-    this.isNewRecord = this.dist >= this.highScore && this.dist > 0
+    // High-score persists SCORE (jarak × combo), not distance (GDD §IV).
+    this.highScore = submitScore(this.score)
+    this.isNewRecord = this.score >= this.highScore && this.score > 0
   }
 
   // Re-run the matcher for either the default reveal (no chip) or a chip filter.
@@ -75,15 +75,26 @@ export class GameOverScene {
 
     ctx.fillStyle = COLORS.gameoverTitle
     ctx.font = `bold ${Math.round(44 * S)}px ${FONTS.mono}`
-    ctx.fillText('GAME OVER', W / 2, H * 0.18)
+    ctx.fillText('GAME OVER', W / 2, H * 0.15)
 
+    // Big jarak (m) — the iconic "how far did you get" number (rank/kasta axis).
     ctx.fillStyle = COLORS.gameoverDist
     ctx.font = `bold ${Math.round(28 * S)}px ${FONTS.mono}`
-    ctx.fillText(`${this.dist}m`, W / 2, H * 0.3)
+    ctx.fillText(`${this.dist}m`, W / 2, H * 0.26)
 
     ctx.fillStyle = COLORS.gameoverRank
     ctx.font = `bold ${Math.round(20 * S)}px ${FONTS.sans}`
-    ctx.fillText(getRank(this.dist), W / 2, H * 0.37)
+    ctx.fillText(getRank(this.dist), W / 2, H * 0.33)
+
+    // Score (jarak × combo) — the persisted high-score axis. Show inline with
+    // the REKOR BARU flag so the comparison the player cares about is visual.
+    ctx.fillStyle = this.isNewRecord ? COLORS.gold : COLORS.white
+    ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
+    ctx.fillText(
+      `SKOR ${Math.floor(this.score)}${this.isNewRecord ? '  ★' : ''}`,
+      W / 2,
+      H * 0.4
+    )
 
     this._drawBudget(ctx, W, H, S)
     this._drawDreamReveal(ctx, W, H, S)
@@ -92,17 +103,17 @@ export class GameOverScene {
     if (this.isNewRecord) {
       ctx.fillStyle = COLORS.gold
       ctx.font = `bold ${Math.round(18 * S)}px ${FONTS.mono}`
-      ctx.fillText('★ REKOR BARU! ★', W / 2, H * 0.82)
+      ctx.fillText('★ REKOR BARU! ★', W / 2, H * 0.84)
     } else {
       ctx.fillStyle = COLORS.faint
       ctx.font = `${Math.round(15 * S)}px ${FONTS.mono}`
-      ctx.fillText(`Rekor: ${this.highScore}m`, W / 2, H * 0.82)
+      ctx.fillText(`Rekor: ${Math.floor(this.highScore)}`, W / 2, H * 0.84)
     }
 
     ctx.globalAlpha = ctaPulse(this.time)
     ctx.fillStyle = COLORS.white
     ctx.font = `${Math.round(18 * S)}px ${FONTS.sans}`
-    ctx.fillText('Tap / Spasi untuk coba lagi', W / 2, H * 0.9)
+    ctx.fillText('Tap / Spasi untuk coba lagi', W / 2, H * 0.91)
     ctx.globalAlpha = 1
   }
 
@@ -110,13 +121,13 @@ export class GameOverScene {
   _drawBudget(ctx, W, H, S) {
     ctx.fillStyle = COLORS.faint
     ctx.font = `${Math.round(12 * S)}px ${FONTS.mono}`
-    ctx.fillText(`Budget: ${formatPrice(this.budget).replace('/bulan', '')}`, W / 2, H * 0.43)
+    ctx.fillText(`Budget: ${formatPrice(this.budget).replace('/bulan', '')}`, W / 2, H * 0.45)
   }
 
   // §IX Kos Impian reveal — a card naming the matched listing + price.
   _drawDreamReveal(ctx, W, H, S) {
     const k = this.dreamKos
-    const cardY = H * 0.48
+    const cardY = H * 0.5
     const cardW = W * 0.82
     const cardH = H * 0.16
     const cardX = (W - cardW) / 2

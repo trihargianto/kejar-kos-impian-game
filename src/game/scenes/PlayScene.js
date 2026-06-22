@@ -63,6 +63,7 @@ export class PlayScene {
   enter() {
     const kasta = getKastaDef(0)
     this.dist = 0
+    this.score = 0
     this.spd = BASE_SPEED
     this.lives = START_LIVES
     this.alive = true
@@ -88,10 +89,12 @@ export class PlayScene {
       if (this.deathTimer <= 0) {
         this.game.lastDist = Math.floor(this.dist)
         this.game.lastCoins = this.coins
+        this.game.lastScore = Math.floor(this.score)
         // §IX reveal reads coins (budget) + distance (tier) at game over.
         this.game.events?.emit(EVENTS.GAME_OVER, {
           dist: this.game.lastDist,
           coins: this.coins,
+          score: this.game.lastScore,
         })
         this.game.go('gameover')
       }
@@ -125,7 +128,13 @@ export class PlayScene {
   }
 
   _updateDistance(dt) {
-    this.dist += (this.spd / 200) * dt
+    // Integrate distance (m) from speed, then accumulate score = meters × live
+    // combo multiplier. A near-miss that raises the multiplier pays out for
+    // every subsequent meter, so an aggressive short run outscores a cautious
+    // long one. (GDD §IV: skor = jarak × combo multiplier.)
+    const dM = (this.spd / 200) * dt
+    this.dist += dM
+    this.score += dM * this.combo.mult
   }
 
   _handleInput() {
@@ -439,6 +448,7 @@ export class PlayScene {
     this.hud.draw(ctx, this.game, {
       lives: this.lives,
       dist: this.dist,
+      score: this.score,
       combo: this.combo.combo,
       mult: this.combo.mult,
       boostTimer: this.player.boostTimer,

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   getRank,
   getKasta,
@@ -6,6 +6,8 @@ import {
   nearMissText,
 } from '../src/game/systems/score.js'
 import { getKastaDef, KASTA_DEFS, getNextKastaThreshold } from '../src/game/kasta.js'
+import { PlayScene } from '../src/game/scenes/PlayScene.js'
+import { getHighScore, submitScore } from '../src/game/systems/storage.js'
 
 describe('score / progression', () => {
   describe('getRank', () => {
@@ -107,5 +109,102 @@ describe('score / progression', () => {
       expect(nearMissText(6)).toBe('GILA!')
       expect(nearMissText(7)).toBe('DPO!')
     })
+  })
+})
+
+describe('PlayScene score accumulator (jarak × combo multiplier)', () => {
+  // Minimal game stub satisfying PlayScene construction without entering the
+  // full scene graph. We poke scene state directly to exercise _updateDistance.
+  const mkScene = () => {
+    const game = {
+      scale: 1,
+      width: 390,
+      floorY: 724,
+      events: { emit: () => {} },
+      floats: [],
+      shake: { trigger: () => {} },
+    }
+    const scene = new PlayScene(game)
+    scene.player.reset()
+    scene.spd = 260 // BASE_SPEED
+    scene.combo.reset()
+    return scene
+  }
+
+  it('starts at score 0 in enter()', () => {
+    const s = mkScene()
+    s.enter()
+    expect(s.score).toBe(0)
+  })
+
+  it('integrates score = meters × multiplier each frame', () => {
+    const s = mkScene()
+    s.enter()
+    // No combo: mult = 1 → score grows exactly like distance.
+    const distBefore = s.dist
+    const scoreBefore = s.score
+    s._updateDistance(0.5) // 0.5s at 260 px/s → (260/200)*0.5 = 0.65m
+    expect(s.dist).toBeCloseTo(distBefore + 0.65, 5)
+    expect(s.score).toBeCloseTo(scoreBefore + 0.65 * 1, 5)
+  })
+
+  it('an aggressive short run outscores a cautious long run at the same distance', () => {
+    // Cautious: 100m at mult=1 the whole way → score ≈ 100.
+    const cautious = mkScene()
+    cautious.enter()
+    cautious.spd = 2000 // big speed → integrate meters quickly
+    for (let i = 0; i < 10; i++) cautious._updateDistance(1)
+    const cautiousDist = cautious.dist
+    const cautiousScore = cautious.score
+    expect(cautiousScore).toBeCloseTo(cautiousDist, 3)
+
+    // Aggressive: same distance but mult = 8 the whole way → score ≈ 8× distance.
+    const aggressive = mkScene()
+    aggressive.enter()
+    aggressive.spd = 2000
+    aggressive.combo.combo = 16 // mult = 2^floor(16/2) = 256, but cap with tier 0
+    aggressive.combo.mult = 8 // tier-0 cap (KASTA_DEFS[0].comboMultiplierCap)
+    for (let i = 0; i < 10; i++) aggressive._updateDistance(1)
+    expect(aggressive.dist).toBeCloseTo(cautiousDist, 3)
+    expect(aggressive.score).toBeGreaterThan(cautiousScore * 5) // ~8× but allow slack
+  })
+})
+
+describe('storage (high-score = score)', () => {
+  // No jsdom in this suite, so storage.js's `window.localStorage` is guarded
+  // by try/catch and silently returns 0. Inject a fake window to exercise it.
+  beforeEach(() => {
+    const _d = {}
+    const store = {
+      getItem: (k) => _d[k] ?? null,
+      setItem: (k, v) => {
+        _d[k] = String(v)
+      },
+    }
+    vi.stubGlobal('window', { localStorage: store })
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns 0 when nothing is stored', () => {
+    expect(getHighScore()).toBe(0)
+  })
+
+  it('persists a new best and returns it', () => {
+    expect(submitScore(1500)).toBe(1500)
+    expect(getHighScore()).toBe(1500)
+  })
+
+  it('does not overwrite when the run did not beat the stored best', () => {
+    submitScore(1500)
+    expect(submitScore(800)).toBe(1500)
+    expect(getHighScore()).toBe(1500)
+  })
+
+  it('a higher score replaces the stored best', () => {
+    submitScore(1500)
+    expect(submitScore(3000)).toBe(3000)
+    expect(getHighScore()).toBe(3000)
   })
 })

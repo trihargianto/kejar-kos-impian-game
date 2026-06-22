@@ -1,7 +1,10 @@
 // ─── HUD ──────────────────────────────────────────────────────────────────────
-// Draws the in-play HUD: lives (top-left), distance + combo (top-center),
+// Draws the in-play HUD: lives (top-left), score + distance (top-center),
 // kasta label (bottom-left), dash cooldown (bottom-right), and the controls
 // hint shown until the first input. Pure draw — owns no game state.
+//
+// Score (jarak × combo multiplier) is the headline number that persists as the
+// high-score; distance (m) is shown smaller below it for rank/kasta context.
 //
 // Receives a snapshot each frame from PlayScene so it stays trivially testable.
 import { COLORS, FONTS, ctaPulse } from '../../theme.js'
@@ -11,6 +14,7 @@ import { START_LIVES } from '../../constants.js'
  * @typedef {Object} HudSnapshot
  * @property {number} lives
  * @property {number} dist
+ * @property {number} score
  * @property {number} combo
  * @property {number} mult
  * @property {number} boostTimer  Seconds of Kopi Sachet boost remaining (0 = none)
@@ -40,18 +44,28 @@ export class Hud {
 
     // Coins (Recehan) now live in the ground-strip badge (GroundPanel), not here.
 
-    // Distance — top center (with multiplier if combo active)
+    // Score — top center primary (the number that persists as high-score).
+    // Multiplier suffix shows when a combo is active so the player sees the
+    // payoff for aggression.
     ctx.font = `bold ${fs(22)}px ${FONTS.mono}`
     ctx.textAlign = 'center'
     const scoreStr =
-      snap.combo > 0 ? `${Math.floor(snap.dist)}m  ×${snap.mult}` : `${Math.floor(snap.dist)}m`
+      snap.combo > 0
+        ? `${Math.floor(snap.score)}  ×${snap.mult}`
+        : `${Math.floor(snap.score)}`
+    ctx.fillStyle = COLORS.ink
     ctx.fillText(scoreStr, W / 2, TOP + fs(22))
 
-    // Combo line — below score
+    // Distance — smaller secondary line under the score.
+    ctx.font = `${fs(12)}px ${FONTS.mono}`
+    ctx.fillStyle = COLORS.faint
+    ctx.fillText(`${Math.floor(snap.dist)}m`, W / 2, TOP + fs(38))
+
+    // Combo line — below distance, only when a combo is active.
     if (snap.combo > 0) {
       ctx.fillStyle = COLORS.accent
       ctx.font = `bold ${fs(15)}px ${FONTS.mono}`
-      ctx.fillText(`COMBO x${snap.combo}`, W / 2, TOP + fs(44))
+      ctx.fillText(`COMBO x${snap.combo}`, W / 2, TOP + fs(58))
     }
 
     // Power-ups (GDD §VII) — top right
@@ -81,3 +95,4 @@ export class Hud {
 
   }
 }
+

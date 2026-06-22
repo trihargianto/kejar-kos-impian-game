@@ -29,6 +29,7 @@ export class Game {
     this.floats = []
     this.lastDist = 0
     this.lastCoins = 0
+    this.lastScore = 0
     this.safeTop = safeTop
     this.safeBottom = safeBottom
 

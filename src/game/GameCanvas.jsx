@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Game } from './Game.js'
 import { EVENTS } from './core/EventBus.js'
 import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
+import { ShareButtons } from './ShareButtons.jsx'
 
 // Control cluster: a 2×2 grid of equal buttons. The box size is derived so the
 // grid (two buttons + one gap each axis) fits exactly, with no leftover space.
@@ -20,6 +21,9 @@ export default function GameCanvas() {
   // Dash cooldown remaining, rounded to 0.1s. 0 = ready. Shown over the button.
   const [dashCd, setDashCd] = useState(0)
   const [paused, setPaused] = useState(false)
+  // Run summary for the share card, captured at game over. null = not on the
+  // game-over screen, so the share buttons only mount there.
+  const [gameOver, setGameOver] = useState(null)
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
@@ -57,6 +61,14 @@ export default function GameCanvas() {
     // Drive the on-screen buttons off the same event bus gameplay already uses.
     const offs = [
       game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => setInPlay(scene === 'play')),
+      // Capture the run summary at game over (drives the share card); clear it
+      // when leaving the game-over scene so the share buttons unmount.
+      game.events.on(EVENTS.GAME_OVER, ({ dist, coins, score }) =>
+        setGameOver({ dist, coins, score })
+      ),
+      game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => {
+        if (scene !== 'gameover') setGameOver(null)
+      }),
       game.events.on(EVENTS.GAME_START, () => setSandals(0)),
       game.events.on(EVENTS.COLLECT_SANDAL, ({ ammo }) => setSandals(ammo)),
       game.events.on(EVENTS.PAUSE, ({ paused }) => setPaused(paused)),
@@ -159,6 +171,12 @@ export default function GameCanvas() {
           }}
         />
       ))}
+
+      {/* Share / download — game-over only. Pinned to the top safe area, clear of
+          the reveal card + chips + retry prompt the canvas scene draws below.
+          Buttons stopPropagation so a tap on them doesn't trigger the
+          container's tap-to-retry. */}
+      {gameOver && <ShareButtons result={gameOver} />}
 
       {/* Pause button — top-right, during play only. */}
       {inPlay && (

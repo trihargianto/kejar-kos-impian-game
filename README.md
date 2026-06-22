@@ -9,7 +9,9 @@ The signature hook is the **Kos Impian reveal** — coins you collect during a
 run become your **budget**, the distance you reach sets the **tier** of kos you
 qualify for, and the game-over screen shows a real-feeling listing you can
 afford. Tap a facility chip (AC, WiFi, Dekat Kampus, K. Mandi Dalam) to
-re-roll within your budget.
+re-roll within your budget. The game-over screen also builds a 1080×1920
+Instagram-Story share card (distance + pangkat + your dream kos + link) you can
+share natively or download.
 
 > Full game design lives in the GDD (Obsidian vault): _Kejar Kos Impian — Brief
 > Concepts_. This README and `docs/` cover the **code**, not the design.

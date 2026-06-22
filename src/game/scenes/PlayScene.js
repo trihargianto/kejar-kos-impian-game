@@ -378,6 +378,7 @@ export class PlayScene {
       )
     )
     this.game.shake.trigger(5 * S, 0.18)
+    this.game.freezeFor(0.05) // hit-stop so "Nyaris!" punches (GDD §XIII)
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult })
   }
 
@@ -397,6 +398,7 @@ export class PlayScene {
       )
     )
     this.game.shake.trigger(8 * S, 0.25)
+    this.game.freezeFor(0.06) // a smashed door lands harder than a graze
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult, source: 'dash-break' })
   }
 
@@ -406,6 +408,7 @@ export class PlayScene {
     this.player.hit(INVINCIBLE_TIME)
     const S = this.game.scale
     this.game.shake.trigger(12 * S, 0.3)
+    this.game.freezeFor(0.07) // damage hit-stop — heaviest beat
     const p = this.player
     this.game.floats.push(
       new FloatText('AW!', p.x + p.w / 2, p.y - 20 * S, COLORS.accent, Math.round(28 * S))

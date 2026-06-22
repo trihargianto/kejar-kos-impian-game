@@ -52,6 +52,10 @@ export class Game {
 
     this._last = null
     this.paused = false
+    // Hit-stop (GDD §XIII): freeze the sim for a few ms on impact moments so a
+    // near-miss "lands". The frozen frame keeps painting; updates are skipped
+    // until the timer drains. Set via freezeFor().
+    this._freeze = 0
     this._loop = this._loop.bind(this)
     this._scenes.go('start')
     this._raf = requestAnimationFrame(this._loop)
@@ -80,6 +84,13 @@ export class Game {
     this.setPaused(!this.paused)
   }
 
+  // Freeze the simulation for `seconds` (hit-stop). Multiple triggers in one
+  // frame take the longest, so a near-miss during shake doesn't stack into a
+  // visible hang. Capped to MAX_DT so a stray big value can't lock the game.
+  freezeFor(seconds) {
+    this._freeze = Math.min(MAX_DT, Math.max(this._freeze, seconds))
+  }
+
   destroy() {
     cancelAnimationFrame(this._raf)
     this.input.destroy()
@@ -96,10 +107,17 @@ export class Game {
       const dt = this._last ? Math.min((ts - this._last) / 1000, MAX_DT) : 0.016
       this._last = ts
 
-      this.shake.update(dt)
-      this._scenes.update(dt)
-      this.floats.forEach((f) => f.update(dt))
-      this.floats = this.floats.filter((f) => !f.dead())
+      // Hit-stop: while frozen, drain the timer but run no sim updates. Shake
+      // still advances so the freeze + shake read as one punchy beat.
+      if (this._freeze > 0) {
+        this._freeze -= dt
+        this.shake.update(dt)
+      } else {
+        this.shake.update(dt)
+        this._scenes.update(dt)
+        this.floats.forEach((f) => f.update(dt))
+        this.floats = this.floats.filter((f) => !f.dead())
+      }
     }
 
     // Draw (under shake transform)

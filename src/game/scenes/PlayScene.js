@@ -147,8 +147,12 @@ export class PlayScene {
     if (input.anyPressed(INTENT.jump)) {
       this._spawnFloats(this.player.jump())
     }
+    // Slide: the press edge enters/refreshes the slide (with float + audio);
+    // holding the button keeps it alive each frame (quiet refresh, no spam).
     if (input.anyPressed(INTENT.slide)) {
       this._spawnFloats(this.player.slide())
+    } else if (input.anyDown(INTENT.slide)) {
+      this.player.holdSlide()
     }
     if (input.anyPressed(INTENT.dash)) {
       this._spawnFloats(this.player.dash())

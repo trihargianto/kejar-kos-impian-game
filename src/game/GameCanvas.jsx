@@ -101,6 +101,20 @@ export default function GameCanvas() {
     if (code === 'Button:Throw') setSandals((n) => Math.max(0, n - 1))
   }, [])
 
+  // Hold-to-slide: pointerdown holds the virtual code (fires the press edge too,
+  // so the slide starts immediately), pointerup/leave/cancel releases it.
+  const holdAction = useCallback((code, e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    gameRef.current?.input.holdVirtual(code)
+  }, [])
+
+  const releaseAction = useCallback((code, e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    gameRef.current?.input.releaseVirtual(code)
+  }, [])
+
   const togglePause = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -241,7 +255,9 @@ export default function GameCanvas() {
           <ActionButton
             label="SLIDE"
             size={BTN_SIZE}
-            onPress={(e) => pressAction('Button:Slide', e)}
+            hold
+            onPress={(e) => holdAction('Button:Slide', e)}
+            onRelease={(e) => releaseAction('Button:Slide', e)}
           />
           <ActionButton
             label="JUMP"
@@ -263,14 +279,20 @@ export default function GameCanvas() {
 //               but STILL PRESSABLE. The press is harmlessly ignored by gameplay
 //               (Player rejects a dash on cooldown), so the button is never a
 //               dead zone — fixing the "can't press DASH" stuck state.
-function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress }) {
+function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress, hold, onRelease }) {
   const cooling = cooldown > 0
   const dim = disabled || cooling
+  // A held button must release on up AND on the pointer leaving/cancelling, or a
+  // finger sliding off the button would leave it stuck "down" (permanent slide).
+  const release = hold && !disabled ? onRelease : undefined
   return (
     <button
       type="button"
       disabled={disabled}
       onPointerDown={disabled ? undefined : onPress}
+      onPointerUp={release}
+      onPointerLeave={release}
+      onPointerCancel={release}
       style={{
         pointerEvents: 'auto',
         width: size,

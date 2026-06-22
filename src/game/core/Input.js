@@ -44,6 +44,19 @@ export class Input {
     this._justPressed[code] = true
   }
 
+  // Hold/release a virtual code so on-screen buttons can be HELD, not just
+  // tapped. holdVirtual also fires the press edge (so the first frame both
+  // presses and is down); releaseVirtual clears the held state. Used by the
+  // SLIDE button for hold-to-slide.
+  holdVirtual(code) {
+    if (!this.keys[code]) this._justPressed[code] = true
+    this.keys[code] = true
+  }
+
+  releaseVirtual(code) {
+    this.keys[code] = false
+  }
+
   justPressed(code) {
     return !!this._justPressed[code]
   }
@@ -57,6 +70,12 @@ export class Input {
   // True if any of the given codes had a fresh press this frame.
   anyPressed(codes) {
     return codes.some((c) => this._justPressed[c])
+  }
+
+  // True if any of the given codes is currently held down (keyboard key or a
+  // held virtual button). Used for hold-to-slide.
+  anyDown(codes) {
+    return codes.some((c) => this.keys[c])
   }
 
   isDown(code) {

@@ -72,6 +72,44 @@ describe('Player air-slide (buffered; fires on natural landing)', () => {
     expect(p.sliding).toBe(true)
   })
 
+  it('holdSlide() refreshes the timer while sliding without re-entering', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide()
+    for (let i = 0; i < 18; i++) p.update(0.016) // burn ~0.29s
+    const before = p.slideTimer
+    const floats = (() => {
+      p.holdSlide()
+      return p._drainFloats()
+    })()
+    expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5) // refreshed to full
+    expect(floats).toHaveLength(0) // quiet: no SLIDE! float spam
+    expect(before).toBeLessThan(SLIDE_DURATION)
+  })
+
+  it('holdSlide() does nothing when not sliding (entering is the press edge job)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    expect(p.sliding).toBe(false)
+    p.holdSlide()
+    expect(p.sliding).toBe(false)
+    expect(p.slideTimer).toBe(0)
+  })
+
+  it('holding SLIDE (press then refresh each frame) keeps the player down', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide() // press edge enters the slide
+    for (let i = 0; i < 120; i++) {
+      p.update(0.016)
+      p.holdSlide() // simulate the button being held every frame
+      expect(p.sliding).toBe(true)
+    }
+  })
+
   it('tapping SLIDE repeatedly keeps the player sliding (hold-to-slide)', () => {
     const p = new Player(mkGame())
     p.reset()

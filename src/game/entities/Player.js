@@ -361,6 +361,15 @@ export class Player {
     return this._drainFloats()
   }
 
+  // Hold-to-slide: called every frame the SLIDE button/key is held. Quietly
+  // keeps the slide alive (refresh the timer) without re-emitting the SLIDE!
+  // float or slide audio each frame. Only acts while already grounded+sliding;
+  // entering the slide is the edge press's job (slide()), so a held button that
+  // started mid-air doesn't silently teleport into a slide on landing.
+  holdSlide() {
+    if (this.sliding) this.slideTimer = SLIDE_DURATION
+  }
+
   dash() {
     this.fsm.send('intent:dash')
     return this._drainFloats()

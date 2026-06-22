@@ -124,8 +124,13 @@ has time to land visually.
   float-text requests. `friction` (set per-frame from the kasta) lengthens the
   dash on slippery floors.
 - **Obstacle** — three zones (`floor` / `ceiling` / `mid`), each telegraphing
-  one correct verb. `Obstacle.random()` draws from the pool; `Obstacle.special(id)`
-  builds named kasta-twist obstacles (e.g. the vacuum).
+  one correct verb (JUMP / SLIDE / DASH). `Obstacle.random()` is verb-balanced
+  (picks a zone first, then a def within it, so all three verbs stay exercised
+  regardless of how many variants each has); `Obstacle.special(id)` builds named
+  kasta-twist obstacles (e.g. the vacuum). SLIDE obstacles are flying objects
+  (bird / thrown sandal / thrown galon) that arrive at head height via a
+  per-obstacle `speedScale > 1`, with a draw-only `bob` that never moves the
+  collision bounds (so the verb stays unambiguous mid-approach).
 - **Collectible** — `coin` (Recehan, fuels combo + budget), `kopi` (Kopi Sachet
   passive power-up), and `sandal` (Sandal Jepit active power-up). Scrolls like
   an obstacle; resolution is a circle-vs-AABB test in `CollectibleSystem`.

@@ -32,23 +32,25 @@ function sampleSpawns(dist, game, iterations = 200) {
 describe('Obstacle.random kasta filtering', () => {
   it('tier 0 (Kipas Angin) only returns tutorial-safe obstacles', () => {
     const game = mkGame()
-    const allowed = new Set(['EMBER', 'KUCING', 'JEMURAN', 'RAK', 'PINTU'])
-    for (let i = 0; i < 60; i++) {
+    // Slide obstacles are flying objects now (burung/sandal), not shelves.
+    const allowed = new Set(['EMBER', 'KUCING', 'JEMURAN', 'BURUNG', 'SANDAL', 'PINTU'])
+    for (let i = 0; i < 120; i++) {
       const o = Obstacle.random(game, 0)
       const labelHead = o.label.split('\n')[0]
       expect(allowed).toContain(labelHead)
     }
   })
 
-  it('tier 1 (AC Standar) adds galon + rak_sepatu to the pool', () => {
+  it('tier 1 (AC Standar) adds the floor galon + the thrown galon slide obstacle', () => {
     const game = mkGame()
+    // Distinguish by verb: floor GALON (JUMP) vs flying GALON (SLIDE).
     const seen = new Set()
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 400; i++) {
       const o = Obstacle.random(game, 1)
-      seen.add(o.label.split('\n')[0])
+      seen.add(o.zone + ':' + o.label.split('\n')[0])
     }
-    expect(seen).toContain('GALON')
-    expect(seen).toContain('RAK SEPATU')
+    expect(seen).toContain('floor:GALON') // jump obstacle
+    expect(seen).toContain('ceiling:GALON') // thrown galon, slide obstacle
   })
 
   it('tier 2 (Singgahsini) adds monstera to the pool', () => {
@@ -76,6 +78,69 @@ describe('Obstacle.random kasta filtering', () => {
       const o = Obstacle.random(game, 1)
       expect(o.label.split('\n')[0]).not.toBe('MONSTERA')
     }
+  })
+})
+
+describe('Flying slide obstacles (Area 5)', () => {
+  it('no shelf-type slide obstacle remains in any tier', () => {
+    const game = mkGame()
+    for (let tier = 0; tier <= 3; tier++) {
+      for (let i = 0; i < 200; i++) {
+        const head = Obstacle.random(game, tier).label.split('\n')[0]
+        expect(head).not.toBe('RAK')
+        expect(head).not.toBe('RAK SEPATU')
+      }
+    }
+  })
+
+  it('flying objects carry speedScale > 1 (arrive faster than ground obstacles)', () => {
+    const game = mkGame()
+    const seen = {}
+    for (let i = 0; i < 600; i++) {
+      const o = Obstacle.random(game, 1)
+      seen[o.label.split('\n')[0]] = o.speedScale
+    }
+    expect(seen['BURUNG']).toBeGreaterThan(1)
+    expect(seen['SANDAL']).toBeGreaterThan(1)
+    // The thrown galon (ceiling) is heavier → slower than bird/sandal but still >1.
+    expect(seen['GALON']).toBeGreaterThan(1)
+  })
+
+  it('ground obstacles keep speedScale = 1 (world speed)', () => {
+    const game = mkGame()
+    const ember = (() => {
+      for (let i = 0; i < 400; i++) {
+        const o = Obstacle.random(game, 0)
+        if (o.label.startsWith('EMBER')) return o
+      }
+    })()
+    expect(ember.speedScale).toBe(1)
+  })
+
+  it('cosmetic bob never moves the collision bounds', () => {
+    const game = mkGame()
+    let bird
+    for (let i = 0; i < 400; i++) {
+      const o = Obstacle.random(game, 0)
+      if (o.label.startsWith('BURUNG')) { bird = o; break }
+    }
+    const y0 = bird.bounds.y
+    // Advance several frames; the draw-only bob accumulates but bounds.y holds.
+    for (let i = 0; i < 30; i++) bird.update(1 / 60, 260)
+    expect(bird.bounds.y).toBe(y0)
+  })
+
+  it('verb selection is balanced — dash shows up far more than a flat pick would', () => {
+    const game = mkGame()
+    const verbCount = { JUMP: 0, SLIDE: 0, DASH: 0 }
+    for (let i = 0; i < 900; i++) {
+      const o = Obstacle.random(game, 0)
+      const verb = o.label.split('\n')[1].replace(/[()]/g, '')
+      verbCount[verb]++
+    }
+    // With 3 zones balanced, each verb ≈ 1/3. A flat pick over 6 tier-0 defs
+    // (4 jump+slide vs 1 dash) would give dash ~1/6. Assert dash ≥ 1/4 of rolls.
+    expect(verbCount.DASH).toBeGreaterThan(900 / 4)
   })
 })
 

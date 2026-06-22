@@ -82,4 +82,12 @@ export class ComboSystem {
   get active() {
     return this.combo > 0
   }
+
+  // Decay urgency for the HUD: 1.0 just after a near-miss, ramps to 0.0 as the
+  // 5s window runs out. 0 when no combo is active. Lets the HUD draw a shrinking
+  // bar so the core greed/decay tension is visible instead of invisible.
+  get decayFraction() {
+    if (this.combo === 0) return 0
+    return Math.max(0, 1 - this.timer / COMBO_DECAY_TIME)
+  }
 }

@@ -1,29 +1,34 @@
 // ─── Ground panel ─────────────────────────────────────────────────────────────
 // Fills the bottom-left of the (now taller) ground strip — the dead space left
-// when the floor was raised to clear the control cluster on the right. Three
-// layers, all pure draw from a snapshot:
+// when the floor was raised to clear the control cluster on the right. Pure draw
+// from a snapshot. Three layers:
 //
 //   1. Scrolling foreground detail — ground tiles/cracks scrolling FASTER than
 //      the background (parallax), sells speed + depth. Spans the full strip.
-//   2. Coin badge — Recehan currency (= §IX budget), bottom-left card.
-//   3. Tier strip — current kasta label + meters toward the next tier. The
-//      in-run facility-tag tracker is gone (facilities are now result-screen
-//      chips, not a mid-run collectible).
+//   2. Budget badge — total coins collected, shown as the rupiah BUDGET they buy
+//      at the §IX reveal (coins ARE the budget, so we surface the real number
+//      the run is building toward, not a bare "Rp 12" count that read as 12
+//      rupiah). A small coin tally rides alongside.
+//   3. Kasta label + KOPI boost chip — current tier name; the active Kopi Sachet
+//      timer sits here too so both buffs aren't scattered (SANDAL ammo lives on
+//      its THROW button). Distance-to-next-tier is NOT repeated here — that's
+//      the top progress bar's job (HorizonGoal).
 //
-// The cluster lives bottom-RIGHT, so panels 2-3 hug the LEFT to avoid it.
+// The cluster lives bottom-RIGHT, so these panels hug the LEFT to avoid it.
 import { COLORS, FONTS } from '../../theme.js'
-import { getKastaDef, getNextKastaThreshold } from '../../kasta.js'
+import { getKastaDef } from '../../kasta.js'
+import { formatPrice } from '../../systems/dreamKos.js'
 
 export class GroundPanel {
   /**
    * @param {CanvasRenderingContext2D} ctx
    * @param {{width:number,height:number,scale:number,floorY:number,safeBottom:number}} game
-   * @param {{dist:number, coins:number}} snap
+   * @param {{dist:number, coins:number, budget:number, boostTimer:number}} snap
    */
   draw(ctx, game, snap) {
     this._drawScrollingGround(ctx, game, snap.dist)
-    this._drawCoinBadge(ctx, game, snap)
-    this._drawTierStrip(ctx, game, snap.dist)
+    this._drawBudgetBadge(ctx, game, snap)
+    this._drawTierStrip(ctx, game, snap)
   }
 
   // ── 1. Parallax foreground tiles ────────────────────────────────────────────
@@ -56,52 +61,67 @@ export class GroundPanel {
     ctx.restore()
   }
 
-  // ── 2. Coin + distance badge ────────────────────────────────────────────────
-  _drawCoinBadge(ctx, game, snap) {
+  // ── 2. Budget badge ──────────────────────────────────────────────────────────
+  // The kos budget the run is earning (coins → rupiah). Labeled so it reads as a
+  // budget, not "Rp <coin count>". A faint coin tally rides under it.
+  _drawBudgetBadge(ctx, game, snap) {
     const { scale: S, floorY } = game
     const x = Math.round(12 * S)
     const y = floorY + Math.round(20 * S)
     const padX = Math.round(12 * S)
-    const padY = Math.round(8 * S)
 
-    // Coins only — distance lives in the top-center score, so it's not repeated.
-    ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
-    const coinStr = `Rp ${snap.coins}`
-    const cardW = ctx.measureText(coinStr).width + padX * 2
+    // Headline: formatted budget, gold. Strip the "/bulan" suffix here — the run
+    // is building a budget, the "/bulan" framing belongs on the reveal card.
+    const budgetStr = formatPrice(snap.budget ?? 0).replace('/bulan', '')
+    ctx.font = `bold ${Math.round(15 * S)}px ${FONTS.mono}`
+    const cardW = ctx.measureText(budgetStr).width + padX * 2
+    const cardH = Math.round(38 * S)
 
     ctx.fillStyle = 'rgba(0,0,0,0.28)'
     ctx.beginPath()
-    ctx.roundRect(x, y, cardW, Math.round(28 * S), Math.round(8 * S))
+    ctx.roundRect(x, y, cardW, cardH, Math.round(8 * S))
     ctx.fill()
 
     ctx.textAlign = 'left'
+    ctx.fillStyle = COLORS.faint
+    ctx.font = `${Math.round(8 * S)}px ${FONTS.mono}`
+    ctx.fillText('MODAL KOS', x + padX, y + Math.round(13 * S))
+
     ctx.fillStyle = COLORS.gold
-    ctx.fillText(coinStr, x + padX, y + padY + Math.round(13 * S))
+    ctx.font = `bold ${Math.round(15 * S)}px ${FONTS.mono}`
+    ctx.fillText(budgetStr, x + padX, y + Math.round(30 * S))
   }
 
-  // ── 3. Tier strip ────────────────────────────────────────────────────────────
-  // Current kasta label + how far to the next tier. Progress toward the next
-  // tier is also the top bar (HorizonGoal); this widget is just label + meters.
-  _drawTierStrip(ctx, game, dist) {
+  // ── 3. Kasta label + KOPI boost chip ──────────────────────────────────────────
+  _drawTierStrip(ctx, game, snap) {
     const { scale: S, floorY } = game
     const x = Math.round(12 * S)
-    const y = floorY + Math.round(58 * S)
+    const y = floorY + Math.round(72 * S)
 
-    const kasta = getKastaDef(dist)
+    const kasta = getKastaDef(snap.dist)
     ctx.textAlign = 'left'
     ctx.fillStyle = COLORS.mutedSoft
     ctx.font = `bold ${Math.round(10 * S)}px ${FONTS.mono}`
     ctx.fillText(`KASTA: ${kasta.label}`, x, y)
 
-    const next = getNextKastaThreshold(dist)
-    const subY = y + Math.round(14 * S)
-    ctx.fillStyle = COLORS.faint
-    ctx.font = `${Math.round(10 * S)}px ${FONTS.mono}`
-    if (next === null) {
-      ctx.fillText('mode endless — teruskan!', x, subY)
-    } else {
-      ctx.fillText(`→ ${Math.max(0, Math.ceil(next - dist))}m lagi`, x, subY)
+    // KOPI boost chip — only while the Kopi Sachet window is active. Pill with a
+    // countdown so the player knows how long the speed + immunity lasts.
+    if ((snap.boostTimer ?? 0) > 0) {
+      const chipY = y + Math.round(8 * S)
+      const label = `KOPI ${snap.boostTimer.toFixed(1)}s`
+      ctx.font = `bold ${Math.round(10 * S)}px ${FONTS.mono}`
+      const padX = Math.round(8 * S)
+      const w = ctx.measureText(label).width + padX * 2
+      const h = Math.round(16 * S)
+
+      ctx.fillStyle = '#6c3483'
+      ctx.beginPath()
+      ctx.roundRect(x, chipY, w, h, h / 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#fff'
+      ctx.textAlign = 'left'
+      ctx.fillText(label, x + padX, chipY + Math.round(11.5 * S))
     }
   }
 }
-

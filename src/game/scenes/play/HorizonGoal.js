@@ -65,7 +65,11 @@ export class HorizonGoal {
     this._drawProgressBar(ctx, game, dist, kasta)
   }
 
-  // Thin bar at the top: how close to the next milestone / the 1000m gate.
+  // Kasta-progress bar — pinned to the very top edge (above the HUD score/combo
+  // stack) so it never collides with that text. Shows how close the player is to
+  // the next kasta threshold / the 1000m gate; a house marker sits at the goal
+  // end. This is the ONLY "distance to next tier" indicator now (the ground
+  // strip's duplicate text was removed).
   _drawProgressBar(ctx, game, dist, kasta) {
     const { width: W, scale: S, safeTop } = game
     const next = getNextKastaThreshold(dist) ?? GATE
@@ -75,8 +79,8 @@ export class HorizonGoal {
 
     const x = Math.round(W * 0.18)
     const w = Math.round(W * 0.64)
-    const y = (safeTop || 0) + Math.round(56 * S)
-    const h = Math.round(6 * S)
+    const y = (safeTop || 0) + Math.round(4 * S)
+    const h = Math.round(5 * S)
 
     ctx.fillStyle = 'rgba(0,0,0,0.18)'
     ctx.beginPath()
@@ -92,7 +96,7 @@ export class HorizonGoal {
     ctx.fillStyle = dist >= GATE ? '#f1c40f' : '#7d8aa8'
     ctx.font = `${Math.round(12 * S)}px monospace`
     ctx.textAlign = 'center'
-    ctx.fillText('⌂', x + w + Math.round(10 * S), y + h)
+    ctx.fillText('⌂', x + w + Math.round(10 * S), y + h + Math.round(4 * S))
   }
 }
 

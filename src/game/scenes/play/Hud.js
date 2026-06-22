@@ -1,14 +1,22 @@
 // ─── HUD ──────────────────────────────────────────────────────────────────────
-// Draws the in-play HUD: lives (top-left), score + distance + combo (top-center).
-// Pure draw — owns no game state.
+// Draws the in-play HUD. Pure draw — owns no game state; receives a snapshot
+// each frame from PlayScene so it stays trivially testable.
 //
-// Score (jarak × combo multiplier) is the headline number that persists as the
-// high-score; distance (m) is shown smaller below it for rank/kasta context.
+// Information hierarchy (top section):
+//   1. Distance (BIG, center) — the intuitive progress metric the whole "kejar
+//      kos impian" fantasy + comedic rank are built on. This is what the player
+//      reads at a glance.
+//   2. Score (secondary, labeled) — jarak × combo, the high-score number. Kept
+//      legible but subordinate to distance so the headline isn't an abstract
+//      invented value.
+//   3. Combo badge + decay bar (only while a combo is live) — surfaces the core
+//      greed/decay tension that was previously invisible: the bar shrinks over
+//      the 5s window and turns urgent (red) as it runs out; a near-miss refills
+//      it. This is the heart of the game, so it gets real prominence.
 //
-// Power-up indicators (KOPI boost) live in the GroundPanel, not here. Sandal
-// ammo is shown on the THROW button itself (GameCanvas.jsx).
-//
-// Receives a snapshot each frame from PlayScene so it stays trivially testable.
+// Lives sit top-left. The kasta-progress bar lives in HorizonGoal (top). Power-up
+// state lives elsewhere (KOPI in GroundPanel, SANDAL on its button) so the top
+// stays focused on score/distance/combo.
 import { COLORS, FONTS } from '../../theme.js'
 import { START_LIVES } from '../../constants.js'
 
@@ -19,6 +27,7 @@ import { START_LIVES } from '../../constants.js'
  * @property {number} score
  * @property {number} combo
  * @property {number} mult
+ * @property {number} decay  Combo decay fraction (1 = fresh, 0 = about to reset)
  */
 
 export class Hud {
@@ -32,7 +41,7 @@ export class Hud {
     const TOP = safeTop + 8
     const fs = (n) => Math.round(n * S)
 
-    // Lives — top left
+    // ── Lives — top left ────────────────────────────────────────────────────
     ctx.fillStyle = COLORS.ink
     ctx.font = `${fs(22)}px ${FONTS.sans}`
     ctx.textAlign = 'left'
@@ -42,23 +51,57 @@ export class Hud {
       TOP + fs(22)
     )
 
-    // Score — top center, primary line (the number that persists as high-score).
-    // Multiplier suffix appended when a combo is active so the player sees the
-    // payoff for aggression.
-    ctx.font = `bold ${fs(24)}px ${FONTS.mono}`
+    // ── Distance — headline, top center ─────────────────────────────────────
+    ctx.font = `bold ${fs(30)}px ${FONTS.mono}`
     ctx.textAlign = 'center'
-    const scoreStr =
-      snap.combo > 0
-        ? `${Math.floor(snap.score)}  ×${snap.mult}`
-        : `${Math.floor(snap.score)}`
     ctx.fillStyle = COLORS.ink
-    ctx.fillText(scoreStr, W / 2, TOP + fs(26))
+    ctx.fillText(`${Math.floor(snap.dist)}m`, W / 2, TOP + fs(28))
 
-    // Distance + combo count — single secondary line, well below the score so
-    // the two lines breathe instead of stacking into each other.
+    // ── Score — secondary, labeled ──────────────────────────────────────────
+    // Sits below the distance; the kasta-progress bar (HorizonGoal) is offset
+    // to clear this line, so they no longer collide.
     ctx.font = `${fs(13)}px ${FONTS.mono}`
-    ctx.fillStyle = COLORS.faint
-    const distStr = snap.combo > 0 ? `${Math.floor(snap.dist)}m  ·  x${snap.combo}` : `${Math.floor(snap.dist)}m`
-    ctx.fillText(distStr, W / 2, TOP + fs(50))
+    ctx.fillStyle = COLORS.mutedSoft
+    ctx.fillText(`SKOR ${Math.floor(snap.score)}`, W / 2, TOP + fs(46))
+
+    // ── Combo badge + decay bar — only while live ───────────────────────────
+    if (snap.combo > 0) this._drawCombo(ctx, game, snap, TOP)
+  }
+
+  // Combo badge: "COMBO x5  ×8" with a shrinking decay bar underneath. The bar
+  // (and badge) tint from gold → red as the 5s window empties, so the player
+  // feels the pressure to find the next near-miss before the chain dies.
+  _drawCombo(ctx, game, snap, TOP) {
+    const { width: W, scale: S } = game
+    const fs = (n) => Math.round(n * S)
+    const decay = snap.decay ?? 1
+
+    // Urgency color: gold when fresh, red as it runs out.
+    const urgent = decay < 0.35
+    const badgeColor = urgent ? COLORS.accent : COLORS.gold
+
+    // Badge text — combo count + active multiplier.
+    const y = TOP + fs(72)
+    ctx.textAlign = 'center'
+    ctx.font = `bold ${fs(18)}px ${FONTS.mono}`
+    ctx.fillStyle = badgeColor
+    const label = `COMBO x${snap.combo}   ×${snap.mult}`
+    ctx.fillText(label, W / 2, y)
+
+    // Decay bar — width tracks the remaining window; centered under the badge.
+    const barW = Math.round(W * 0.42)
+    const barH = fs(5)
+    const barX = Math.round((W - barW) / 2)
+    const barY = y + fs(8)
+
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'
+    ctx.beginPath()
+    ctx.roundRect(barX, barY, barW, barH, barH / 2)
+    ctx.fill()
+
+    ctx.fillStyle = badgeColor
+    ctx.beginPath()
+    ctx.roundRect(barX, barY, Math.max(barH, Math.round(barW * decay)), barH, barH / 2)
+    ctx.fill()
   }
 }

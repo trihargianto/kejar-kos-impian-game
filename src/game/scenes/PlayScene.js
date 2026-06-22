@@ -24,6 +24,7 @@ import { SandalProjectile } from '../entities/SandalProjectile.js'
 import { INTENT } from '../core/Input.js'
 import { getKastaDef } from '../kasta.js'
 import { nearMissText } from '../systems/score.js'
+import { budgetFromCoins } from '../systems/dreamKos.js'
 import { EVENTS } from '../core/EventBus.js'
 import { SpawnDirector } from './play/SpawnDirector.js'
 import { ComboSystem } from './play/ComboSystem.js'
@@ -439,6 +440,8 @@ export class PlayScene {
     this.groundPanel.draw(ctx, this.game, {
       dist: this.dist,
       coins: this.coins,
+      budget: budgetFromCoins(this.coins),
+      boostTimer: this.player.boostTimer,
     })
 
     this.collectibles.draw(ctx)
@@ -455,8 +458,7 @@ export class PlayScene {
       score: this.score,
       combo: this.combo.combo,
       mult: this.combo.mult,
-      boostTimer: this.player.boostTimer,
-      sandals: this.player.sandals,
+      decay: this.combo.decayFraction,
     })
 
     if (this.activePrompt) this._drawPrompt(ctx)

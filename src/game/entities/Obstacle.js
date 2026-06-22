@@ -40,15 +40,36 @@ const OBS_DEFS = [
     label: 'JEMURAN\n(SLIDE)',
     getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 36 - SLIDE_CLEARANCE,
   },
+  // Flying slide obstacles (replaces the old floor-sitting shelves). A thing
+  // hurtling at head height unambiguously reads as "duck under" — unlike a rak,
+  // which sits on the floor and reads as JUMP, breaking the §III one-verb
+  // telegraph. They travel HORIZONTALLY at a fixed head-height Y (speedScale
+  // makes them arrive faster = "thrown/incoming"); the draw-only bob in the
+  // Obstacle class never touches bounds, so the correct verb never changes
+  // mid-approach (vertical motion would — that's the ambiguity §III forbids).
   {
-    id: 'rak',
+    id: 'burung',
     zone: 'ceiling',
     minKasta: 0,
-    w: 64,
-    h: 52,
-    fill: '#8e44ad',
-    label: 'RAK\n(SLIDE)',
-    getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 52 - SLIDE_CLEARANCE,
+    w: 40,
+    h: 28,
+    fill: '#5dade2',
+    label: 'BURUNG\n(SLIDE)',
+    speedScale: 1.15,
+    bob: true, // cosmetic flap; draw-only
+    getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 28 - SLIDE_CLEARANCE,
+  },
+  {
+    id: 'sandal_lempar',
+    zone: 'ceiling',
+    minKasta: 0,
+    w: 34,
+    h: 20,
+    fill: '#e67e22',
+    label: 'SANDAL\n(SLIDE)',
+    speedScale: 1.2, // light + slightly faster — Ibu Kos chucks it at your head
+    bob: true,
+    getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 20 - SLIDE_CLEARANCE,
   },
   {
     id: 'pintu',
@@ -77,14 +98,18 @@ const OBS_DEFS = [
     getY: (floorY) => floorY - 64,
   },
   {
-    id: 'rak_sepatu',
+    id: 'galon_lempar',
     zone: 'ceiling',
     minKasta: 1,
-    w: 70,
-    h: 48,
-    fill: '#6c3483',
-    label: 'RAK SEPATU\n(SLIDE)',
-    getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 48 - SLIDE_CLEARANCE,
+    w: 40,
+    h: 44,
+    fill: '#16a085',
+    label: 'GALON\n(SLIDE)',
+    // Heavier object → barely above world speed so the bigger hitbox isn't
+    // unfair to react to.
+    speedScale: 1.1,
+    bob: true,
+    getY: (floorY) => floorY - PLAYER_HEIGHT / 2 - 44 - SLIDE_CLEARANCE,
   },
   // Singgahsini additions (GDD §VI.3).
   {
@@ -142,6 +167,13 @@ export class Obstacle {
     this.fill = def.fill
     this.label = def.label
     this.zone = def.zone
+    // Per-obstacle scroll multiplier. Flying objects (>1) arrive faster so they
+    // read as thrown/incoming; ground obstacles default to 1 (world speed).
+    this.speedScale = def.speedScale ?? 1
+    // Cosmetic vertical bob (draw-only). NEVER applied to bounds/collision, so
+    // the slide verb stays unambiguous regardless of the wobble.
+    this._bobOn = !!def.bob
+    this._bob = 0
     this.passed = false
     this.nearMissed = false
     this._labelSize = Math.round(11 * S)
@@ -152,9 +184,32 @@ export class Obstacle {
   // `tier` is the active kasta index (0=Kipas Angin, 1=AC Standar, ...). defs
   // with minKasta ≤ tier are eligible. Defaults to 0 so uncalled uses still
   // return the tutorial-safe pool.
+  //
+  // Selection is VERB-BALANCED, not flat-uniform: pick a zone (verb) first with
+  // weighted-by-zone, then a def within it. A flat pick over defs would skew
+  // toward whichever verb has the most variants (today: 4 floor/JUMP,
+  // 4 ceiling/SLIDE, 1 mid/DASH). Picking the zone first keeps all three verbs
+  // alive regardless of variant count.
+  //
+  // Zone weights (not equal): JUMP is the most comfortable verb, so floor gets
+  // the largest share; SLIDE obstacles are flying objects that arrive faster, so
+  // ceiling is kept lower to avoid relentless duck-spam; DASH stays modest. This
+  // tilts the run toward the easy verb instead of an even 1/3 split that felt
+  // punishing once slide became flying objects. Zones absent at this tier are
+  // dropped and their weight ignored.
   static random(game, tier = 0) {
     const pool = OBS_DEFS.filter((d) => d.minKasta <= tier)
-    const def = pool[Math.floor(Math.random() * pool.length)]
+    const ZONE_WEIGHT = { floor: 5, ceiling: 3, mid: 2 }
+    const zones = [...new Set(pool.map((d) => d.zone))]
+    const total = zones.reduce((s, z) => s + (ZONE_WEIGHT[z] ?? 1), 0)
+    let r = Math.random() * total
+    let zone = zones[0]
+    for (const z of zones) {
+      r -= ZONE_WEIGHT[z] ?? 1
+      if (r <= 0) { zone = z; break }
+    }
+    const inZone = pool.filter((d) => d.zone === zone)
+    const def = inZone[Math.floor(Math.random() * inZone.length)]
     return new Obstacle(def, game)
   }
 
@@ -169,7 +224,8 @@ export class Obstacle {
   }
 
   update(dt, speed) {
-    this.x -= speed * dt
+    this.x -= speed * this.speedScale * dt
+    if (this._bobOn) this._bob += dt * 9
   }
 
   get offscreen() {
@@ -177,10 +233,13 @@ export class Obstacle {
   }
 
   draw(ctx) {
+    // Draw-only bob: shifts the sprite a few px vertically so flying objects
+    // flutter. Collision still uses this.y (bounds), so the verb never changes.
+    const yb = this._bobOn ? this.y + Math.sin(this._bob) * (this.h * 0.18) : this.y
     ctx.fillStyle = this.fill
-    roundRect(ctx, this.x, this.y, this.w, this.h, 4)
+    roundRect(ctx, this.x, yb, this.w, this.h, 4)
     ctx.fillStyle = 'rgba(0,0,0,0.18)'
-    roundRect(ctx, this.x, this.y + this.h - 5, this.w, 5, 4)
+    roundRect(ctx, this.x, yb + this.h - 5, this.w, 5, 4)
     ctx.fillStyle = '#fff'
     ctx.font = `bold ${this._labelSize}px monospace`
     ctx.textAlign = 'center'
@@ -188,7 +247,7 @@ export class Obstacle {
       ctx.fillText(
         line,
         this.x + this.w / 2,
-        this.y + this.h / 2 - this._labelLineH / 2 + i * this._labelLineH
+        yb + this.h / 2 - this._labelLineH / 2 + i * this._labelLineH
       )
     })
   }

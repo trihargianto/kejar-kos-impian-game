@@ -136,6 +136,41 @@ describe('ComboSystem.gainSmall', () => {
   })
 })
 
+describe('ComboSystem.decayFraction (HUD decay bar)', () => {
+  it('is 0 when no combo is active', () => {
+    const c = new ComboSystem()
+    c.reset()
+    expect(c.decayFraction).toBe(0)
+  })
+
+  it('is 1 right after a near-miss, then ramps toward 0', () => {
+    const c = new ComboSystem()
+    c.reset()
+    c.gain(KASTA_DEFS[0])
+    expect(c.decayFraction).toBeCloseTo(1, 5)
+    c.update(2.5) // halfway through the 5s window
+    expect(c.decayFraction).toBeCloseTo(0.5, 2)
+  })
+
+  it('a fresh near-miss refills the decay bar', () => {
+    const c = new ComboSystem()
+    c.reset()
+    c.gain(KASTA_DEFS[0])
+    c.update(4) // nearly expired
+    expect(c.decayFraction).toBeLessThan(0.3)
+    c.gain(KASTA_DEFS[0]) // near-miss resets the timer
+    expect(c.decayFraction).toBeCloseTo(1, 5)
+  })
+
+  it('never goes negative even past the window', () => {
+    const c = new ComboSystem()
+    c.reset()
+    c.gain(KASTA_DEFS[0])
+    c.update(10)
+    expect(c.decayFraction).toBeGreaterThanOrEqual(0)
+  })
+})
+
 describe('CollectibleDirector power-up spawning', () => {
   it('actually spawns kopi + sandal over a long enough window', () => {
     const game = mkGame()

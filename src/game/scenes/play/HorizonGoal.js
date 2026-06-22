@@ -5,7 +5,8 @@
 // is always on screen, not just a distance number.
 //
 // Pure draw from a (dist) snapshot. Drawn behind obstacles/player, above the bg.
-import { getKastaDef, getNextKastaThreshold } from '../../kasta.js'
+import { getKastaDef, getNextKastaThreshold, getNextKastaDef } from '../../kasta.js'
+import { COLORS, FONTS } from '../../theme.js'
 
 const GATE = 1000 // meters to Mode Kos Impian
 
@@ -65,35 +66,89 @@ export class HorizonGoal {
     this._drawProgressBar(ctx, game, dist, kasta)
   }
 
-  // Thin bar at the top: how close to the next milestone / the 1000m gate.
+  // Kasta-progress bar — a single neat row pinned just inside the top-safe area,
+  // CENTERED so it clears the lives (top-left) and pause button (top-right). The
+  // two kasta names sit INLINE, flanking the bar on the same baseline (current
+  // on the left, next on the right), so nothing stacks under the bar or collides
+  // with the hearts. This one row answers "where am I / what's next". At the
+  // final tier the right side reads the endless goal.
+  //
+  // Layout (centered group): [current name]  ▁▁bar▁▁ ⌂  [next name]
   _drawProgressBar(ctx, game, dist, kasta) {
     const { width: W, scale: S, safeTop } = game
     const next = getNextKastaThreshold(dist) ?? GATE
+    const nextDef = getNextKastaDef(dist)
     const prevThreshold = kasta.fromMeters
     const span = Math.max(1, next - prevThreshold)
     const frac = Math.min(1, Math.max(0, (dist - prevThreshold) / span))
 
-    const x = Math.round(W * 0.18)
-    const w = Math.round(W * 0.64)
-    const y = (safeTop || 0) + Math.round(56 * S)
-    const h = Math.round(6 * S)
+    const leftLabel = titleCase(kasta.label)
+    const rightLabel = nextDef ? titleCase(nextDef.label) : 'Kos Impian'
 
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'
+    // Bar + label geometry. Bar is a fixed slice in the middle; names flank it.
+    const barW = Math.round(W * 0.30)
+    const barH = Math.round(6 * S)
+    const fontPx = Math.round(10 * S)
+    const gap = Math.round(8 * S)
+    const houseW = Math.round(13 * S)
+    const cy = (safeTop || 0) + Math.round(12 * S) // vertical center of the row
+
+    ctx.font = `${fontPx}px ${FONTS.mono}`
+    const leftW = ctx.measureText(leftLabel).width
+    const rightW = ctx.measureText(rightLabel).width
+
+    // Center the whole group so it's symmetric and never reaches the corners.
+    const groupW = leftW + gap + barW + gap + houseW + gap + rightW
+    let cx = Math.round((W - groupW) / 2)
+
+    // Current kasta name (left).
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = COLORS.mutedSoft
+    ctx.fillText(leftLabel, cx, cy)
+    cx += leftW + gap
+
+    // The bar.
+    const barY = cy - Math.round(barH / 2)
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
     ctx.beginPath()
-    ctx.roundRect(x, y, w, h, h / 2)
+    ctx.roundRect(cx, barY, barW, barH, barH / 2)
     ctx.fill()
-
     ctx.fillStyle = '#e0a868'
     ctx.beginPath()
-    ctx.roundRect(x, y, Math.round(w * frac), h, h / 2)
+    ctx.roundRect(cx, barY, Math.max(barH, Math.round(barW * frac)), barH, barH / 2)
     ctx.fill()
+    cx += barW + gap
 
-    // Little house marker at the end of the bar — the goal you're filling toward.
-    ctx.fillStyle = dist >= GATE ? '#f1c40f' : '#7d8aa8'
-    ctx.font = `${Math.round(12 * S)}px monospace`
+    // House marker = the destination at the bar's end.
+    ctx.fillStyle = dist >= GATE ? '#f1c40f' : '#b07d3a'
+    ctx.font = `${Math.round(12 * S)}px ${FONTS.mono}`
     ctx.textAlign = 'center'
-    ctx.fillText('⌂', x + w + Math.round(10 * S), y + h)
+    ctx.fillText('⌂', cx + houseW / 2, cy)
+    cx += houseW + gap
+
+    // Next kasta name (right).
+    ctx.font = `${fontPx}px ${FONTS.mono}`
+    ctx.textAlign = 'left'
+    ctx.fillStyle = nextDef ? '#b07d3a' : '#caa24a'
+    ctx.fillText(rightLabel, cx, cy)
+
+    ctx.textBaseline = 'alphabetic' // restore default for other draws
   }
+}
+
+// "KIPAS ANGIN" → "Kipas Angin". Title Case reads softer than shouty all-caps
+// mono for the kasta labels on the progress bar. Known acronyms (AC) stay upper.
+const ACRONYMS = new Set(['AC'])
+function titleCase(s) {
+  return s
+    .split(' ')
+    .map((w) =>
+      ACRONYMS.has(w.toUpperCase())
+        ? w.toUpperCase()
+        : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    )
+    .join(' ')
 }
 
 // Hex lerp (#rrggbb), t in 0..1.

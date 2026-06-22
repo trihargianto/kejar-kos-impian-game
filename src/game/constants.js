@@ -24,6 +24,8 @@ export const DOUBLE_JUMP_VELOCITY = -650
 // ─── Slide ────────────────────────────────────────────────────────────────────
 // Hitbox shrinks to half height while sliding; obstacle bottom must clear this
 export const SLIDE_DURATION = 0.8 // seconds player stays in slide pose
+// Re-pressing SLIDE mid-slide restarts this timer (a fresh slide), so tapping
+// repeatedly keeps the slide going.
 
 // ─── Dash ─────────────────────────────────────────────────────────────────────
 export const DASH_VELOCITY = 900 // px/s forward burst

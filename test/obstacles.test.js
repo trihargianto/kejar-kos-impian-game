@@ -32,23 +32,25 @@ function sampleSpawns(dist, game, iterations = 200) {
 describe('Obstacle.random kasta filtering', () => {
   it('tier 0 (Kipas Angin) only returns tutorial-safe obstacles', () => {
     const game = mkGame()
-    const allowed = new Set(['EMBER', 'KUCING', 'JEMURAN', 'RAK', 'PINTU'])
-    for (let i = 0; i < 60; i++) {
+    // Slide obstacles are flying objects now (burung/sandal), not shelves.
+    const allowed = new Set(['EMBER', 'KUCING', 'JEMURAN', 'BURUNG', 'SANDAL', 'PINTU'])
+    for (let i = 0; i < 120; i++) {
       const o = Obstacle.random(game, 0)
       const labelHead = o.label.split('\n')[0]
       expect(allowed).toContain(labelHead)
     }
   })
 
-  it('tier 1 (AC Standar) adds galon + rak_sepatu to the pool', () => {
+  it('tier 1 (AC Standar) adds the floor galon + the thrown galon slide obstacle', () => {
     const game = mkGame()
+    // Distinguish by verb: floor GALON (JUMP) vs flying GALON (SLIDE).
     const seen = new Set()
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 400; i++) {
       const o = Obstacle.random(game, 1)
-      seen.add(o.label.split('\n')[0])
+      seen.add(o.zone + ':' + o.label.split('\n')[0])
     }
-    expect(seen).toContain('GALON')
-    expect(seen).toContain('RAK SEPATU')
+    expect(seen).toContain('floor:GALON') // jump obstacle
+    expect(seen).toContain('ceiling:GALON') // thrown galon, slide obstacle
   })
 
   it('tier 2 (Singgahsini) adds monstera to the pool', () => {
@@ -76,6 +78,77 @@ describe('Obstacle.random kasta filtering', () => {
       const o = Obstacle.random(game, 1)
       expect(o.label.split('\n')[0]).not.toBe('MONSTERA')
     }
+  })
+})
+
+describe('Flying slide obstacles (Area 5)', () => {
+  it('no shelf-type slide obstacle remains in any tier', () => {
+    const game = mkGame()
+    for (let tier = 0; tier <= 3; tier++) {
+      for (let i = 0; i < 200; i++) {
+        const head = Obstacle.random(game, tier).label.split('\n')[0]
+        expect(head).not.toBe('RAK')
+        expect(head).not.toBe('RAK SEPATU')
+      }
+    }
+  })
+
+  it('flying objects carry speedScale > 1 (arrive faster than ground obstacles)', () => {
+    const game = mkGame()
+    // Key by zone+label: "GALON" exists as both floor (JUMP, scale 1) and
+    // ceiling (SLIDE, flying) — keying by label alone would collide.
+    const seen = {}
+    for (let i = 0; i < 2000; i++) {
+      const o = Obstacle.random(game, 1)
+      seen[o.zone + ':' + o.label.split('\n')[0]] = o.speedScale
+    }
+    expect(seen['ceiling:BURUNG']).toBeGreaterThan(1)
+    expect(seen['ceiling:SANDAL']).toBeGreaterThan(1)
+    // The thrown galon (ceiling) is heavier → slower than bird/sandal but still >1.
+    expect(seen['ceiling:GALON']).toBeGreaterThan(1)
+    // The floor galon (JUMP) stays at world speed.
+    expect(seen['floor:GALON']).toBe(1)
+  })
+
+  it('ground obstacles keep speedScale = 1 (world speed)', () => {
+    const game = mkGame()
+    const ember = (() => {
+      for (let i = 0; i < 400; i++) {
+        const o = Obstacle.random(game, 0)
+        if (o.label.startsWith('EMBER')) return o
+      }
+    })()
+    expect(ember.speedScale).toBe(1)
+  })
+
+  it('cosmetic bob never moves the collision bounds', () => {
+    const game = mkGame()
+    let bird
+    for (let i = 0; i < 400; i++) {
+      const o = Obstacle.random(game, 0)
+      if (o.label.startsWith('BURUNG')) { bird = o; break }
+    }
+    const y0 = bird.bounds.y
+    // Advance several frames; the draw-only bob accumulates but bounds.y holds.
+    for (let i = 0; i < 30; i++) bird.update(1 / 60, 260)
+    expect(bird.bounds.y).toBe(y0)
+  })
+
+  it('verb selection is weighted but keeps every verb alive', () => {
+    const game = mkGame()
+    const N = 3000
+    const verbCount = { JUMP: 0, SLIDE: 0, DASH: 0 }
+    for (let i = 0; i < N; i++) {
+      const o = Obstacle.random(game, 0)
+      const verb = o.label.split('\n')[1].replace(/[()]/g, '')
+      verbCount[verb]++
+    }
+    // Tier-0 zone weights floor:ceiling:mid = 5:3:2 → JUMP 50%, SLIDE 30%,
+    // DASH 20%. JUMP (easiest verb) dominates; SLIDE (flying objects) is tamed
+    // below jump; DASH still appears well above a flat-by-def ~1/6 share.
+    expect(verbCount.JUMP).toBeGreaterThan(verbCount.SLIDE) // easy verb dominates
+    expect(verbCount.SLIDE).toBeGreaterThan(verbCount.DASH)
+    expect(verbCount.DASH / N).toBeGreaterThan(0.12) // dash never starved
   })
 })
 

@@ -57,6 +57,72 @@ describe('Player air-slide (buffered; fires on natural landing)', () => {
     expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5)
   })
 
+  it('re-pressing SLIDE while sliding restarts the slide timer (fresh slide)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide() // enter slide (grounded)
+    expect(p.sliding).toBe(true)
+    // Burn ~0.3s of the slide, then re-press.
+    for (let i = 0; i < 18; i++) p.update(0.016) // ~0.29s
+    const before = p.slideTimer
+    expect(before).toBeLessThan(SLIDE_DURATION) // some time already elapsed
+    p.slide() // fresh slide
+    expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5) // reset to full, not stacked
+    expect(p.sliding).toBe(true)
+  })
+
+  it('holdSlide() refreshes the timer while sliding without re-entering', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide()
+    for (let i = 0; i < 18; i++) p.update(0.016) // burn ~0.29s
+    const before = p.slideTimer
+    const floats = (() => {
+      p.holdSlide()
+      return p._drainFloats()
+    })()
+    expect(p.slideTimer).toBeCloseTo(SLIDE_DURATION, 5) // refreshed to full
+    expect(floats).toHaveLength(0) // quiet: no SLIDE! float spam
+    expect(before).toBeLessThan(SLIDE_DURATION)
+  })
+
+  it('holdSlide() does nothing when not sliding (entering is the press edge job)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    expect(p.sliding).toBe(false)
+    p.holdSlide()
+    expect(p.sliding).toBe(false)
+    expect(p.slideTimer).toBe(0)
+  })
+
+  it('holding SLIDE (press then refresh each frame) keeps the player down', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide() // press edge enters the slide
+    for (let i = 0; i < 120; i++) {
+      p.update(0.016)
+      p.holdSlide() // simulate the button being held every frame
+      expect(p.sliding).toBe(true)
+    }
+  })
+
+  it('tapping SLIDE repeatedly keeps the player sliding (hold-to-slide)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.slide()
+    // Re-press every ~0.5s for well past a single SLIDE_DURATION; never drops.
+    for (let i = 0; i < 120; i++) {
+      p.update(0.016)
+      if (i % 30 === 0) p.slide() // tap roughly twice per second
+      expect(p.sliding).toBe(true)
+    }
+  })
+
   it('jump after an air-slide press cancels the queue', () => {
     const p = new Player(mkGame())
     p.reset()
@@ -175,5 +241,80 @@ describe('Player jump-out-of-slide', () => {
     expect(p.vy).toBeLessThan(0)
     expect(p.vy).toBeGreaterThan(vyAtJump - 100) // gravity dents by < 100/frame
     expect(p.grounded).toBe(false)
+  })
+})
+
+describe('Player mid-air dash responsiveness', () => {
+  it('dash works while airborne (not gated to the ground)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    expect(p.grounded).toBe(false)
+    p.dash()
+    expect(p.dashing).toBe(true)
+  })
+
+  it('jump fires immediately during the dash burst (no dead window)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump() // airborne, 1 jump left
+    settle(p)
+    p.dash()
+    expect(p.dashing).toBe(true)
+    // Press jump mid-dash — should cancel the burst and launch right away.
+    p.jump()
+    expect(p.dashing).toBe(false)
+    expect(p.vy).toBeLessThan(0) // launched upward
+  })
+
+  it('jump fires immediately during snap-back (the ~0.22s tail)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    p.dash()
+    // Run the dash out so we enter snapBack.
+    for (let i = 0; i < 20 && p.dashing; i++) p.update(0.016)
+    expect(p.snappingBack).toBe(true)
+    p.jump() // should not be swallowed by snap-back
+    expect(p.snappingBack).toBe(false)
+    expect(p.vy).toBeLessThan(0)
+  })
+
+  it('jump-out-of-burst respects the jump budget (no infinite jumps)', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump() // jump 1
+    p.jump() // jump 2 (double) → jumps now 0
+    p.dash()
+    expect(p.jumps).toBe(0)
+    const vyBefore = p.vy
+    p.jump() // no jumps left → must NOT re-launch
+    expect(p.jumps).toBe(0) // budget unchanged
+    expect(p.vy).toBe(vyBefore) // velocity untouched (no new launch)
+    expect(p.dashing).toBe(true) // still in the burst, not cancelled
+  })
+
+  it('a slide buffered during dash fires on landing', () => {
+    const p = new Player(mkGame())
+    p.reset()
+    settle(p)
+    p.jump()
+    settle(p)
+    p.dash()
+    p.slide() // buffered during the burst
+    expect(p._slideQueued).toBe(true)
+    // Fall to the ground; the buffered slide should fire.
+    let slid = false
+    for (let i = 0; i < 200 && !slid; i++) {
+      p.update(0.016)
+      if (p.sliding) slid = true
+    }
+    expect(slid).toBe(true)
   })
 })

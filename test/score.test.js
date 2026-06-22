@@ -5,7 +5,12 @@ import {
   comboMultiplier,
   nearMissText,
 } from '../src/game/systems/score.js'
-import { getKastaDef, KASTA_DEFS, getNextKastaThreshold } from '../src/game/kasta.js'
+import {
+  getKastaDef,
+  KASTA_DEFS,
+  getNextKastaThreshold,
+  getNextKastaDef,
+} from '../src/game/kasta.js'
 import { PlayScene } from '../src/game/scenes/PlayScene.js'
 import { getHighScore, submitScore } from '../src/game/systems/storage.js'
 
@@ -75,6 +80,20 @@ describe('score / progression', () => {
     })
     it('returns null past the final tier', () => {
       expect(getNextKastaThreshold(1500)).toBeNull()
+    })
+  })
+
+  describe('getNextKastaDef', () => {
+    it('returns the next tier definition (the one you fill toward)', () => {
+      const next = getNextKastaDef(0) // in Kipas Angin → next is AC Standar
+      expect(next.label).toBe('AC STANDAR')
+      expect(next.fromMeters).toBe(300)
+    })
+    it('returns the upcoming def mid-tier', () => {
+      expect(getNextKastaDef(800).label).toBe('KOS IMPIAN') // in Singgahsini
+    })
+    it('returns null on the final tier (no next)', () => {
+      expect(getNextKastaDef(1500)).toBeNull()
     })
   })
 

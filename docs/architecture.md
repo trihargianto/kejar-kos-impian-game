@@ -124,8 +124,13 @@ has time to land visually.
   float-text requests. `friction` (set per-frame from the kasta) lengthens the
   dash on slippery floors.
 - **Obstacle** — three zones (`floor` / `ceiling` / `mid`), each telegraphing
-  one correct verb. `Obstacle.random()` draws from the pool; `Obstacle.special(id)`
-  builds named kasta-twist obstacles (e.g. the vacuum).
+  one correct verb (JUMP / SLIDE / DASH). `Obstacle.random()` is verb-balanced
+  (picks a zone first, then a def within it, so all three verbs stay exercised
+  regardless of how many variants each has); `Obstacle.special(id)` builds named
+  kasta-twist obstacles (e.g. the vacuum). SLIDE obstacles are flying objects
+  (bird / thrown sandal / thrown galon) that arrive at head height via a
+  per-obstacle `speedScale > 1`, with a draw-only `bob` that never moves the
+  collision bounds (so the verb stays unambiguous mid-approach).
 - **Collectible** — `coin` (Recehan, fuels combo + budget), `kopi` (Kopi Sachet
   passive power-up), and `sandal` (Sandal Jepit active power-up). Scrolls like
   an obstacle; resolution is a circle-vs-AABB test in `CollectibleSystem`.
@@ -156,9 +161,9 @@ pause) and polls `dashCd` via rAF for the DASH cooldown countdown.
 | `ComboSystem`       | Near-miss count, per-kasta multiplier cap, decay timer          |
 | `CollectibleSystem` | Coin + power-up spawn, pickup; coins feed combo + budget |
 | `PromptDirector`    | Distance-keyed milestone prompts, fired once each in order      |
-| `HorizonGoal`       | Skyline dream-kos building + next-tier progress bar (pure draw)  |
-| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, coin badge (budget), tier strip (kasta label + meters to next tier) — pure draw |
-| `Hud`               | Lives, score (jarak × combo), distance, combo, power-ups (pure draw) |
+| `HorizonGoal`       | Skyline dream-kos building + top progress bar labeled at BOTH ends (current kasta → next kasta, or "KOS IMPIAN ∞" at the final tier). Sole owner of kasta name + tier progress (pure draw) |
+| `GroundPanel`       | Bottom-left ground strip: scrolling parallax detail, budget badge (coins → rupiah "MODAL KOS"), KOPI boost chip — pure draw. No kasta text (the top progress bar owns it now) |
+| `Hud`               | Top section: lives (left), distance headline (center), score subline, combo badge + decay bar (gold→red as the 5s window empties) — pure draw |
 
 ## Shared systems (cross-scene, under systems/)
 

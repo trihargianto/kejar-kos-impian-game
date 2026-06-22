@@ -1,7 +1,10 @@
 // ─── Player ───────────────────────────────────────────────────────────────────
 // Movement + state via a StateMachine. States:
-//   running  → grounded or airborne, can jump/dash
-//   sliding  → ground-only, low hitbox, time-limited
+//   running  → grounded or airborne, can jump/dash; can also queue an air-slide
+//              (press SLIDE mid-air → on natural landing, smoothly enters slide;
+//              no y-snap, gravity integrates normally; jump/dash cancel the queue)
+//   sliding  → ground-only pose, low hitbox, time-limited; JUMP cancels into
+//              a real jump (one press launches, no need to tap twice)
 //   dashing  → forward burst, ignores mid-zone collisions
 //   snapBack → easing back to home X after a dash
 //   hurt     → invincible window after a hit
@@ -42,6 +45,8 @@ function runningState() {
   return {
     on(event, _payload, p) {
       if (event === 'intent:jump') {
+        // Jump supersedes a queued air-slide (player changed their mind).
+        p._slideQueued = false
         if (p.jumps <= 0) return null
         p.vy = (p.jumps === 2 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY) * p.S
         p.jumps--
@@ -51,13 +56,22 @@ function runningState() {
         return null // stay in running; air physics handled in update
       }
       if (event === 'intent:slide') {
-        if (!p.grounded) return null
+        if (!p.grounded) {
+          // Air-slide: queue the slide. Gravity keeps integrating so the
+          // player falls to the floor smoothly — no y-snap. The slide fires
+          // on natural landing contact (see update below). Jump/dash cancel.
+          p._slideQueued = true
+          p._lastFloats.push(p._float('↓', 0, -4, '#9b59b6', 18))
+          return null
+        }
         p.slideTimer = SLIDE_DURATION
         p._lastFloats.push(p._float('SLIDE!', 0, -16, '#9b59b6', 22))
         p._emit('slide')
         return 'sliding'
       }
       if (event === 'intent:dash') {
+        // Dash supersedes a queued air-slide.
+        p._slideQueued = false
         if (p.dashCd > 0) return null
         // Lantai licin (AC Standar, GDD §VI): low friction → the dash burst
         // carries longer before snap-back. friction defaults to 1 (no effect).
@@ -71,9 +85,20 @@ function runningState() {
       return null
     },
     update(dt, p) {
+      const wasGrounded = p.grounded
       applyGravity(dt, p)
       applyDashCooldown(dt, p)
       applyInvincibility(dt, p)
+      // Consume a queued air-slide on the frame the player lands naturally.
+      // No y-snap: gravity already brought them to the floor, so the landing
+      // reads smoothly and the slide starts from the running contact point.
+      if (p._slideQueued && !wasGrounded && p.grounded) {
+        p._slideQueued = false
+        p.slideTimer = SLIDE_DURATION
+        p._lastFloats.push(p._float('SLIDE!', 0, -16, '#9b59b6', 22))
+        p._emit('slide')
+        p.fsm.transition('sliding')
+      }
     },
   }
 }
@@ -83,11 +108,19 @@ function slidingState() {
     enter(_prev, _payload, p) {
       p.sliding = true
     },
-    // eslint-disable-next-line no-unused-vars
-    on(event, _payload, _p) {
+    on(event, _payload, p) {
       if (event === 'intent:jump') {
-        // Jump cancels slide (no air jump from a slide). No float is emitted —
-        // matches original behavior; the player can tap again to actually jump.
+        // Jump out of slide: one press both cancels the slide AND launches.
+        // Reset to the standing floor position first so applyGravity doesn't
+        // see the half-height pose's low y as "below floor" and snap us back,
+        // zeroing the jump velocity on the next frame.
+        if (p.jumps <= 0) return 'running'
+        p.y = p.floorY - p.baseH
+        p.vy = (p.jumps === 2 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY) * p.S
+        p.jumps--
+        p.grounded = false
+        p._lastFloats.push(p._float('↑', 0, -4, COLORS.white, 20))
+        p._emit('jump')
         return 'running'
       }
       return null
@@ -202,6 +235,7 @@ export class Player {
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false
+    this._slideQueued = false // air-slide buffer; consumed on natural landing
     this._lastFloats = []
     this.fsm = new StateMachine(
       'running',
@@ -257,6 +291,7 @@ export class Player {
     this._snapFrom = 0
     this._snapTimer = 0
     this.snappingBack = false
+    this._slideQueued = false
     this._lastFloats = []
     this.fsm.transition('running')
   }

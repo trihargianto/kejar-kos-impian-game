@@ -489,17 +489,55 @@ export class PlayScene {
     const alpha = Math.min(1, this._promptTimer / 0.6) // fade out in the last 0.6s
     ctx.save()
     ctx.globalAlpha = alpha
-    const y = H * 0.2
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'
+
     const padX = 16 * S
+    const padY = 10 * S
+    const lineH = 22 * S
     ctx.font = `bold ${Math.round(15 * S)}px monospace`
     ctx.textAlign = 'center'
-    const tw = ctx.measureText(this.activePrompt).width
+    ctx.textBaseline = 'middle'
+
+    // Word-wrap to fit the frame width (the prompt is a full sentence and used to
+    // overflow off both edges on narrow screens). Banner height grows per line.
+    const maxTextW = W - padX * 4
+    const lines = wrapText(ctx, this.activePrompt, maxTextW)
+    const boxW = Math.min(
+      W - padX * 2,
+      Math.max(...lines.map((l) => ctx.measureText(l).width)) + padX * 2
+    )
+    const boxH = lines.length * lineH + padY * 2
+    const cyTop = H * 0.2 - boxH / 2
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.beginPath()
-    ctx.roundRect(W / 2 - tw / 2 - padX, y - 18 * S, tw + padX * 2, 28 * S, 8 * S)
+    ctx.roundRect(W / 2 - boxW / 2, cyTop, boxW, boxH, 8 * S)
     ctx.fill()
+
     ctx.fillStyle = '#fff'
-    ctx.fillText(this.activePrompt, W / 2, y)
+    lines.forEach((l, i) => {
+      ctx.fillText(l, W / 2, cyTop + padY + lineH * (i + 0.5))
+    })
+    ctx.textBaseline = 'alphabetic'
     ctx.restore()
   }
+}
+
+// Greedy word-wrap: split `text` into lines that each fit within maxW at the
+// context's current font. A single word longer than maxW stays on its own line
+// (it'll still fit on any realistic phone width for these prompts).
+function wrapText(ctx, text, maxW) {
+  const words = text.split(' ')
+  const lines = []
+  let cur = ''
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w
+    if (ctx.measureText(test).width > maxW && cur) {
+      lines.push(cur)
+      cur = w
+    } else {
+      cur = test
+    }
+  }
+  if (cur) lines.push(cur)
+  return lines
 }

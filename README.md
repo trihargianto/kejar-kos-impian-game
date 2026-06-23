@@ -62,10 +62,10 @@ primary input; keyboard is a desktop fallback.
 
 | Verb  | Mobile        | Desktop       |
 | ----- | ------------- | ------------- |
-| Jump  | JUMP button   | Space / ↑ / W |
+| Jump  | JUMP button   | ↑ / W         |
 | Slide | SLIDE button  | ↓ / S         |
 | Dash  | DASH button   | Shift / →     |
-| Throw | THROW button  | Q             |
+| Throw | THROW button  | Space / Q     |
 
 Tap JUMP again in the air for a double jump. DASH shows a cooldown but stays
 pressable; THROW is disabled without sandal ammo. A pause button sits top-right.

@@ -21,7 +21,7 @@ export class StartScene {
     // Keyboard-only shortcut straight into the game. NOTE: we exclude Tap here on
     // purpose — INTENT.confirm includes Tap, but on this menu a tap must go
     // through the button hit-test below, not blindly start the game.
-    if (input.anyPressed(['Space', 'Enter', 'ArrowUp'])) {
+    if (input.anyPressed(['Enter', 'ArrowUp'])) {
       this.game.go('play')
       return
     }

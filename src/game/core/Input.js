@@ -104,9 +104,9 @@ export class Input {
 // and tests. `confirm` keeps Tap so a plain screen tap advances the menus, which
 // have no buttons of their own.
 export const INTENT = {
-  jump: ['Space', 'ArrowUp', 'KeyW', 'Button:Jump'],
+  jump: ['ArrowUp', 'KeyW', 'Button:Jump'], // Space moved to throw
   slide: ['ArrowDown', 'KeyS', 'Button:Slide'],
   dash: ['ShiftLeft', 'ShiftRight', 'ArrowRight', 'Button:Dash'],
-  throw: ['KeyQ', 'Button:Throw'], // Sandal Jepit (active power-up)
-  confirm: ['Space', 'Enter', 'Tap', 'ArrowUp'],
+  throw: ['Space', 'KeyQ', 'Button:Throw'], // Sandal Jepit (active power-up)
+  confirm: ['Enter', 'Tap', 'ArrowUp'], // Space is throw, so it's no longer confirm
 }

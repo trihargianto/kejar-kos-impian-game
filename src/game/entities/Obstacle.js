@@ -157,6 +157,8 @@ export class Obstacle {
     const S = game.scale
     const floorY = game.floorY
 
+    this.game = game
+    this.id = def.id // asset lookup key → 'obs:<id>' in the manifest
     // Scale all dimensions
     this.w = Math.round(def.w * S)
     this.h = Math.round(def.h * S)
@@ -236,6 +238,20 @@ export class Obstacle {
     // Draw-only bob: shifts the sprite a few px vertically so flying objects
     // flutter. Collision still uses this.y (bounds), so the verb never changes.
     const yb = this._bobOn ? this.y + Math.sin(this._bob) * (this.h * 0.18) : this.y
+
+    // Sprite-first (GDD §XVI Step 4). drawImage stretches the art to the
+    // collision rect (this.w × this.h). Tall obstacles (pintu, smartlock) are
+    // authored at an AI-friendly ratio and stretched vertically here — their art
+    // is designed to tolerate it (horizontal cracks, vertical wood grain).
+    const assets = this.game?.assets
+    const id = this.id ? `obs:${this.id}` : null
+    const sprite = id && assets?.has(id) ? assets.image(id) : null
+    if (sprite) {
+      ctx.drawImage(sprite, this.x, yb, this.w, this.h)
+      return
+    }
+
+    // Placeholder: colored rounded block + zone/verb label.
     ctx.fillStyle = this.fill
     roundRect(ctx, this.x, yb, this.w, this.h, 4)
     ctx.fillStyle = 'rgba(0,0,0,0.18)'

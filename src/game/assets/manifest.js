@@ -12,6 +12,13 @@ export const MANIFEST = {
     'player:slide': 'sprites/player_slide.png',
     'player:jump': 'sprites/player_jump.png',
     'player:hurt': 'sprites/player_hurt.png',
+    // Obstacles — Kipas Angin (tier 0). Tall pintu is authored at 3:1 and
+    // stretched vertically to the hitbox by Obstacle.draw.
+    'obs:ember': 'sprites/obs_ember.png',
+    'obs:kucing': 'sprites/obs_kucing.png',
+    'obs:jemuran': 'sprites/obs_jemuran.png',
+    'obs:burung': 'sprites/obs_burung.png',
+    'obs:pintu': 'sprites/obs_pintu.png',
   },
   audio: {},
 }

@@ -12,57 +12,12 @@ const GATE = 1000 // meters to Mode Kos Impian
 
 export class HorizonGoal {
   // `dist` meters; `game` provides width/height/scale/floorY.
+  // The dream-kos destination is conveyed entirely by the top progress bar (the
+  // ⌂ marker the bar fills toward). The old large "building on the horizon" that
+  // grew in the play area was removed: it clashed with the indoor hallway wall
+  // (a kos in front of a kos) and competed with the foreground.
   draw(ctx, game, dist) {
-    const { width: W, scale: S, floorY } = game
     const kasta = getKastaDef(dist)
-
-    // Proximity 0..1 toward the gate. Front-loaded (pow < 1) so the building
-    // visibly grows in the first stretch — a flat linear ramp spread the change
-    // across the whole 1000m and read as static in short runs.
-    const linearProx = Math.min(1, dist / GATE)
-    const prox = Math.pow(linearProx, 0.6) // size/clarity ramp (fast early, eases near gate)
-    const baseY = floorY
-    const bw = Math.round((70 + prox * 230) * S)
-    const bh = Math.round((55 + prox * 300) * S)
-    const bx = Math.round(W * 0.62 - bw / 2)
-    const by = baseY - bh
-
-    // Clarity: faint and hazy far away, solid and warm up close.
-    ctx.save()
-    ctx.globalAlpha = 0.35 + prox * 0.55
-
-    // Building body — tint warms toward the dream as we near the gate.
-    ctx.fillStyle = lerpColor('#9aa7c4', '#f6d6a8', prox)
-    ctx.fillRect(bx, by, bw, bh)
-
-    // Roof.
-    ctx.fillStyle = lerpColor('#7d8aa8', '#e0a868', prox)
-    ctx.beginPath()
-    ctx.moveTo(bx - 4 * S, by)
-    ctx.lineTo(bx + bw / 2, by - 22 * S)
-    ctx.lineTo(bx + bw + 4 * S, by)
-    ctx.closePath()
-    ctx.fill()
-
-    // Windows appear once we're close enough to "see" them (>40% there).
-    if (prox > 0.4) {
-      const winAlpha = (prox - 0.4) / 0.6
-      ctx.globalAlpha *= winAlpha
-      ctx.fillStyle = '#fff4cf'
-      const cols = 3
-      const rows = Math.max(2, Math.floor(bh / (28 * S)))
-      const pad = 10 * S
-      const ww = (bw - pad * (cols + 1)) / cols
-      const wh = 14 * S
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          ctx.fillRect(bx + pad + c * (ww + pad), by + pad + r * (wh + pad * 1.2), ww, wh)
-        }
-      }
-      ctx.globalAlpha = 0.35 + prox * 0.55
-    }
-    ctx.restore()
-
     this._drawProgressBar(ctx, game, dist, kasta)
   }
 
@@ -157,12 +112,4 @@ function titleCase(s) {
         : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
     )
     .join(' ')
-}
-
-// Hex lerp (#rrggbb), t in 0..1.
-function lerpColor(a, b, t) {
-  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16))
-  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16))
-  const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * t))
-  return `rgb(${c[0]},${c[1]},${c[2]})`
 }

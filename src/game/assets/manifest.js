@@ -31,8 +31,11 @@ export const MANIFEST = {
     'item:coin': 'sprites/item_coin.png',
     'item:kopi': 'sprites/item_kopi.png',
     'item:sandal': 'sprites/item_sandal.png',
-    // Backgrounds — parallax wall tile per kasta (only Kipas Angin so far)
+    // Backgrounds — parallax wall tile per kasta
     'bg:kipas_angin': 'sprites/bg_kipas_angin.png',
+    'bg:ac_standar': 'sprites/bg_ac_standar.png',
+    'bg:singgahsini': 'sprites/bg_singgahsini.png',
+    'bg:kos_impian': 'sprites/bg_kos_impian.png',
     // UI
     'ui:logo': 'sprites/ui_logo.png',
   },

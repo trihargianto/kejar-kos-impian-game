@@ -32,6 +32,7 @@ import { CollectibleDirector } from './play/CollectibleSystem.js'
 import { PromptDirector } from './play/PromptDirector.js'
 import { HorizonGoal } from './play/HorizonGoal.js'
 import { GroundPanel } from './play/GroundPanel.js'
+import { Background } from './play/Background.js'
 import { Hud } from './play/Hud.js'
 import { testObstacle, scaledNearMissDist } from './play/CollisionSystem.js'
 
@@ -52,6 +53,7 @@ export class PlayScene {
     this.prompts = new PromptDirector()
     this.horizon = new HorizonGoal()
     this.groundPanel = new GroundPanel()
+    this.background = new Background()
     this.hud = new Hud()
     this.obs = []
     this.coins = 0
@@ -433,9 +435,14 @@ export class PlayScene {
   // ── Render ──────────────────────────────────────────────────────────────────
   draw(ctx) {
     const { width: W, height: H } = this.game
+    // Fill the whole frame with the kasta tint first so the floor band + any
+    // gap under a not-yet-loaded background still has the tier colour.
     const kasta = getKastaDef(this.dist)
     ctx.fillStyle = KASTA_BG[kasta.label] ?? kasta.bg
     ctx.fillRect(0, 0, W, H)
+    // Parallax hallway wall over the sky band (sprite-first, falls back to the
+    // flat tint). Scrolls slower than the foreground for depth.
+    this.background.draw(ctx, this.game, this.dist)
     // Horizon goal sits between sky and floor — the dream kos you're chasing.
     this.horizon.draw(ctx, this.game, this.dist)
     this.game.drawFloor(ctx)

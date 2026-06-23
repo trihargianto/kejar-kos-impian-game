@@ -25,12 +25,19 @@ export class StartScene {
     ctx.fillRect(0, 0, W, H)
     this.game.drawFloor(ctx)
 
-    // Title
-    ctx.fillStyle = COLORS.inkSoft
-    ctx.font = `bold ${Math.round(48 * S)}px ${FONTS.mono}`
-    ctx.textAlign = 'center'
-    ctx.fillText('KEJAR KOS', W / 2, H * 0.22)
-    ctx.fillText('IMPIAN', W / 2, H * 0.22 + Math.round(56 * S))
+    // Title — logo sprite if present, else the canvas-drawn wordmark fallback.
+    const logo = this.game.assets?.has('ui:logo') ? this.game.assets.image('ui:logo') : null
+    if (logo) {
+      const lw = Math.round(W * 0.8)
+      const lh = Math.round(lw * (logo.height / logo.width))
+      ctx.drawImage(logo, Math.round((W - lw) / 2), Math.round(H * 0.12), lw, lh)
+    } else {
+      ctx.fillStyle = COLORS.inkSoft
+      ctx.font = `bold ${Math.round(48 * S)}px ${FONTS.mono}`
+      ctx.textAlign = 'center'
+      ctx.fillText('KEJAR KOS', W / 2, H * 0.22)
+      ctx.fillText('IMPIAN', W / 2, H * 0.22 + Math.round(56 * S))
+    }
 
     // Subtitle
     ctx.font = `${Math.round(15 * S)}px ${FONTS.sans}`

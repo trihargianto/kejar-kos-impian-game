@@ -44,8 +44,17 @@ export class Hud {
     const TOP = safeTop + 26
     const fs = (n) => Math.round(n * S)
 
+    // The HUD sits over the parallax wall, which varies in brightness. Use light
+    // text + a soft dark shadow so it stays legible against any background (the
+    // wall's top scrim gradient does the rest). Shadow is set once for the whole
+    // top block and cleared at the end.
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'
+    ctx.shadowBlur = Math.round(4 * S)
+    ctx.shadowOffsetY = Math.round(1 * S)
+
     // ── Lives — top left ────────────────────────────────────────────────────
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = COLORS.accent // hearts read as red regardless of background
     ctx.font = `${fs(22)}px ${FONTS.sans}`
     ctx.textAlign = 'left'
     ctx.fillText(
@@ -57,18 +66,20 @@ export class Hud {
     // ── Distance — headline, top center ─────────────────────────────────────
     ctx.font = `bold ${fs(30)}px ${FONTS.mono}`
     ctx.textAlign = 'center'
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = COLORS.white
     ctx.fillText(`${Math.floor(snap.dist)}m`, W / 2, TOP + fs(28))
 
     // ── Score — secondary, labeled ──────────────────────────────────────────
     // Sits below the distance; the kasta-progress bar (HorizonGoal) is offset
     // to clear this line, so they no longer collide.
     ctx.font = `${fs(13)}px ${FONTS.mono}`
-    ctx.fillStyle = COLORS.mutedSoft
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
     ctx.fillText(`SKOR ${Math.floor(snap.score)}`, W / 2, TOP + fs(46))
 
     // ── Combo badge + decay bar — only while live ───────────────────────────
     if (snap.combo > 0) this._drawCombo(ctx, game, snap, TOP)
+
+    ctx.restore()
   }
 
   // Combo badge: "COMBO x5  ×8" with a shrinking decay bar underneath. The bar

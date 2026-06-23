@@ -1,6 +1,7 @@
 // ─── Floating text ────────────────────────────────────────────────────────────
 // Short-lived text that drifts upward and fades. Used for combos, hits, hints.
 import { COLORS, FONTS } from '../theme.js'
+import { setTextShadow } from '../core/utils.js'
 
 const RISE_SPEED = 60 // px/s upward drift
 
@@ -27,6 +28,7 @@ export class FloatText {
   draw(ctx) {
     ctx.save()
     ctx.globalAlpha = Math.max(0, this.life / this.maxLife)
+    setTextShadow(ctx, this.size / 20) // scale shadow with text size
     ctx.fillStyle = this.color
     ctx.font = `bold ${this.size}px ${FONTS.mono}`
     ctx.textAlign = 'center'

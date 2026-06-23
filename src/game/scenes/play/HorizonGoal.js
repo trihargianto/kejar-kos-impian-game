@@ -6,7 +6,7 @@
 //
 // Pure draw from a (dist) snapshot. Drawn behind obstacles/player, above the bg.
 import { getKastaDef, getNextKastaThreshold, getNextKastaDef } from '../../kasta.js'
-import { COLORS, FONTS } from '../../theme.js'
+import { FONTS } from '../../theme.js'
 
 const GATE = 1000 // meters to Mode Kos Impian
 
@@ -93,6 +93,13 @@ export class HorizonGoal {
     const houseW = Math.round(13 * S)
     const cy = (safeTop || 0) + Math.round(12 * S) // vertical center of the row
 
+    // Sits over the parallax wall — give the whole row a soft dark shadow so the
+    // thin labels + bar stay legible against any background.
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,0.55)'
+    ctx.shadowBlur = Math.round(3 * S)
+    ctx.shadowOffsetY = Math.round(1 * S)
+
     ctx.font = `${fontPx}px ${FONTS.mono}`
     const leftW = ctx.measureText(leftLabel).width
     const rightW = ctx.measureText(rightLabel).width
@@ -104,7 +111,7 @@ export class HorizonGoal {
     // Current kasta name (left).
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = COLORS.mutedSoft
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'
     ctx.fillText(leftLabel, cx, cy)
     cx += leftW + gap
 
@@ -130,9 +137,10 @@ export class HorizonGoal {
     // Next kasta name (right).
     ctx.font = `${fontPx}px ${FONTS.mono}`
     ctx.textAlign = 'left'
-    ctx.fillStyle = nextDef ? '#b07d3a' : '#caa24a'
+    ctx.fillStyle = nextDef ? 'rgba(255,255,255,0.7)' : '#f1d27a'
     ctx.fillText(rightLabel, cx, cy)
 
+    ctx.restore()
     ctx.textBaseline = 'alphabetic' // restore default for other draws
   }
 }

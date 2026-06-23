@@ -16,6 +16,7 @@
 // The cluster lives bottom-RIGHT, so these panels hug the LEFT to avoid it.
 import { COLORS, FONTS } from '../../theme.js'
 import { formatPrice } from '../../systems/dreamKos.js'
+import { setTextShadow } from '../../core/utils.js'
 
 export class GroundPanel {
   /**
@@ -24,9 +25,13 @@ export class GroundPanel {
    * @param {{dist:number, coins:number, budget:number, boostTimer:number}} snap
    */
   draw(ctx, game, snap) {
-    this._drawScrollingGround(ctx, game, snap.dist)
+    this._drawScrollingGround(ctx, game, snap.dist) // rects/lines — no shadow
+    // Text panels get a soft shadow for legibility (consistent with the HUD).
+    ctx.save()
+    setTextShadow(ctx, game.scale)
     this._drawBudgetBadge(ctx, game, snap)
     this._drawBuffs(ctx, game, snap)
+    ctx.restore()
   }
 
   // ── 1. Parallax foreground tiles ────────────────────────────────────────────

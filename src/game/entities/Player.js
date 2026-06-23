@@ -486,12 +486,27 @@ export class Player {
         ctx.restore()
       }
 
-      if (sprite) {
+      if (sprite && this.sliding) {
+        this._drawSlideSprite(ctx, sprite, drawY, h)
+      } else if (sprite) {
         this._drawRunnerSprite(ctx, sprite, drawY, h)
       } else {
         this._drawPlaceholder(ctx, S, h, drawY)
       }
     }
+  }
+
+  // Slide is a horizontal pose: the body stretches out wider than the hitbox.
+  // Drawing it into the narrow hitbox rect (52:38) squashes it. Instead, scale
+  // by the hitbox HEIGHT and let the WIDTH follow the sprite's intrinsic ratio,
+  // so the body extends BACKWARD (left) past the hitbox. The hitbox itself is
+  // unchanged — this is purely how far the art reaches. Front (right) edge and
+  // floor stay pinned to the hitbox so collision still lines up with the art.
+  _drawSlideSprite(ctx, sprite, drawY, h) {
+    const ratio = sprite.width / sprite.height // e.g. 400:200 = 2.0
+    const drawW = h * ratio
+    const rightX = this.x + this.w // pin the front of the slide to the hitbox right
+    ctx.drawImage(sprite, rightX - drawW, drawY, drawW, h)
   }
 
   // Draw the sprite with a procedural run cycle so the single static frame reads

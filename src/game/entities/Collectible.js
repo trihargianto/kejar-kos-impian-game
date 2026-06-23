@@ -30,6 +30,7 @@ export class Collectible {
    */
   constructor(kind, game, runtimeY) {
     const S = game.scale
+    this.game = game
     this.kind = kind
     this.r = Math.round(radiusFor(kind) * S)
     this.y = Math.round(runtimeY)
@@ -55,6 +56,17 @@ export class Collectible {
 
   draw(ctx) {
     const yb = this.y + Math.sin(this._bob) * (this.r * 0.18)
+
+    // Sprite-first (GDD §XVI Step 4). Draw into the 2r×2r box centered on the
+    // bobbing position; falls back to the primitive placeholder per kind below.
+    const id = `item:${this.kind}`
+    const sprite = this.game?.assets?.has(id) ? this.game.assets.image(id) : null
+    if (sprite) {
+      const d = this.r * 2
+      ctx.drawImage(sprite, this.x - this.r, yb - this.r, d, d)
+      return
+    }
+
     if (this.kind === 'coin') {
       ctx.fillStyle = '#f1c40f'
       ctx.beginPath()

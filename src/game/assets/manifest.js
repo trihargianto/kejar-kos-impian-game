@@ -18,7 +18,19 @@ export const MANIFEST = {
     'obs:kucing': 'sprites/obs_kucing.png',
     'obs:jemuran': 'sprites/obs_jemuran.png',
     'obs:burung': 'sprites/obs_burung.png',
+    'obs:sandal_lempar': 'sprites/obs_sandal_lempar.png',
     'obs:pintu': 'sprites/obs_pintu.png',
+    // AC Standar (tier 1)
+    'obs:galon': 'sprites/obs_galon.png',
+    'obs:galon_lempar': 'sprites/obs_galon_lempar.png',
+    // Singgahsini (tier 2). smartlock authored 3:1, stretched to the hitbox.
+    'obs:monstera': 'sprites/obs_monstera.png',
+    'obs:vacuum': 'sprites/obs_vacuum.png',
+    'obs:smartlock': 'sprites/obs_smartlock.png',
+    // Collectibles + power-ups (GDD §VII)
+    'item:coin': 'sprites/item_coin.png',
+    'item:kopi': 'sprites/item_kopi.png',
+    'item:sandal': 'sprites/item_sandal.png',
   },
   audio: {},
 }

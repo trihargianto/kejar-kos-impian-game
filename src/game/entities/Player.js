@@ -460,13 +460,16 @@ export class Player {
     const hurting = this.invTimer > 0 && !this.boosting
     const visible = !hurting || Math.floor(this.invTimer * 12) % 2 === 0
 
-    // Pose priority: hurt (damage i-frames only) → slide → airborne jump → run.
-    // Each falls back to run if its sprite is missing, and run falls back to the
-    // placeholder. Hurt wins so the recoil pose reads during the blink window.
+    // Pose priority: slide → hurt → airborne jump → run. SLIDE wins over hurt:
+    // the slide pose is the only one sized to the low slide hitbox, so a hurt
+    // pose (tall 52:76) drawn into the slide rect would shrink the character.
+    // Taking damage during a slide still reads via the blink (visible) below.
+    // Each falls back to run if its sprite is missing; run falls back to the
+    // placeholder.
     const assets = this.game.assets
     let spriteId = 'player:run'
-    if (hurting && assets?.has('player:hurt')) spriteId = 'player:hurt'
-    else if (this.sliding) spriteId = 'player:slide'
+    if (this.sliding) spriteId = 'player:slide'
+    else if (hurting && assets?.has('player:hurt')) spriteId = 'player:hurt'
     else if (!this.grounded && assets?.has('player:jump')) spriteId = 'player:jump'
     const sprite = assets?.has(spriteId) ? assets.image(spriteId) : null
 

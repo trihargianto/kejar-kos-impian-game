@@ -13,7 +13,6 @@ import {
   SPEED_RAMP,
   INVINCIBLE_TIME,
   DEATH_DELAY,
-  START_LIVES,
   KOPI_SPEED_MULTIPLIER,
 } from '../constants.js'
 import { KASTA_BG } from '../theme.js'
@@ -25,6 +24,7 @@ import { INTENT } from '../core/Input.js'
 import { getKastaDef } from '../kasta.js'
 import { nearMissText } from '../systems/score.js'
 import { budgetFromCoins } from '../systems/dreamKos.js'
+import { activeDifficulty } from '../systems/settings.js'
 import { EVENTS } from '../core/EventBus.js'
 import { SpawnDirector } from './play/SpawnDirector.js'
 import { ComboSystem } from './play/ComboSystem.js'
@@ -65,10 +65,13 @@ export class PlayScene {
 
   enter() {
     const kasta = getKastaDef(0)
+    // Snapshot the difficulty preset for the whole run, so changing it mid-run
+    // (in Settings) only takes effect next run. Medium = all multipliers 1.0.
+    this.diff = activeDifficulty()
     this.dist = 0
     this.score = 0
-    this.spd = BASE_SPEED
-    this.lives = START_LIVES
+    this.spd = BASE_SPEED * this.diff.speed
+    this.lives = this.diff.lives
     this.alive = true
     this.deathTimer = 0
     this.obs = []
@@ -124,8 +127,12 @@ export class PlayScene {
     // (GDD §VII Passive) layers on top of that as a temporary multiplier.
     const kasta = getKastaDef(this.dist)
     const boostMult = this.player.boosting ? KOPI_SPEED_MULTIPLIER : 1
+    // Difficulty scales the base speed + the ramp (acceleration) independently.
+    const d = this.diff
     this.spd =
-      (BASE_SPEED + (this.dist / 10) * SPEED_RAMP) * (kasta.speedMultiplier ?? 1) * boostMult
+      (BASE_SPEED * d.speed + (this.dist / 10) * SPEED_RAMP * d.ramp) *
+      (kasta.speedMultiplier ?? 1) *
+      boostMult
     // Feed the kasta's friction into the player so lantai licin lengthens dashes.
     this.player.friction = kasta.frictionMultiplier ?? 1
     // Share world speed so the run-cycle animation paces its legs to the ground.
@@ -409,7 +416,7 @@ export class PlayScene {
   _takeDamage() {
     this.lives--
     const hadCombo = this.combo.clear()
-    this.player.hit(INVINCIBLE_TIME)
+    this.player.hit(INVINCIBLE_TIME * this.diff.iframes)
     const S = this.game.scale
     this.game.shake.trigger(12 * S, 0.3)
     this.game.freezeFor(0.07) // damage hit-stop — heaviest beat

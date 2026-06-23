@@ -9,14 +9,19 @@ import { SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX } from '../../constants.js'
 import { getKastaDef } from '../../kasta.js'
 import { Obstacle } from '../../entities/Obstacle.js'
 import { lerp } from '../../core/utils.js'
+import { activeDifficulty } from '../../systems/settings.js'
 
 export class SpawnDirector {
   constructor() {
     this.timer = 0
+    this.spawnMult = 1
   }
 
   reset() {
-    this.timer = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
+    // Snapshot the difficulty's spawn-interval multiplier for the run (>1 rarer,
+    // <1 denser). Mirrors PlayScene snapshotting the preset on enter().
+    this.spawnMult = activeDifficulty().spawn
+    this.timer = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random()) * this.spawnMult
   }
 
   // Returns an Obstacle to spawn this frame, or null if not yet time.
@@ -29,7 +34,7 @@ export class SpawnDirector {
     const kasta = getKastaDef(dist)
     const base = lerp(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX, Math.random())
     const accelerated = Math.max(0.5, base - dist * 0.00012)
-    this.timer = accelerated * (kasta.spawnIntervalMultiplier ?? 1)
+    this.timer = accelerated * (kasta.spawnIntervalMultiplier ?? 1) * this.spawnMult
 
     // Kasta twists (GDD §VI): Singgahsini+ injects the vacuum (floor chaser)
     // AND the smart-lock (mid-zone door that REQUIRES dash). Each roll is

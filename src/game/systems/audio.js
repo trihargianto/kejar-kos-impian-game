@@ -10,13 +10,15 @@
 // Map (GDD §XIV): jump "Hup", hit "ember jatuh", near-miss pitch-up per combo,
 // game-over sad tone, 1000m sirine. Synth approximations until real SFX land.
 import { EVENTS } from '../core/EventBus.js'
+import { loadSettings } from './settings.js'
 
 export class AudioSystem {
   constructor(events) {
     this.events = events
     this.ctx = null
-    this.enabled = true
     this._offs = []
+    // Initial SFX on/off from saved settings.
+    this.enabled = loadSettings().sfx
     this._wire()
   }
 
@@ -35,6 +37,11 @@ export class AudioSystem {
       this.enabled = false
       return null
     }
+  }
+
+  // Live SFX toggle from the Settings panel.
+  setEnabled(on) {
+    this.enabled = !!on
   }
 
   // One short tone. freq Hz, dur seconds, type oscillator wave, gain 0..1.

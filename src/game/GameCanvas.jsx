@@ -3,6 +3,7 @@ import { Game } from './Game.js'
 import { EVENTS } from './core/EventBus.js'
 import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
 import { ShareButtons } from './ShareButtons.jsx'
+import { SettingsPanel } from './SettingsPanel.jsx'
 
 // Control cluster: a 2×2 grid of equal buttons. The box size is derived so the
 // grid (two buttons + one gap each axis) fits exactly, with no leftover space.
@@ -24,6 +25,9 @@ export default function GameCanvas() {
   // Run summary for the share card, captured at game over. null = not on the
   // game-over screen, so the share buttons only mount there.
   const [gameOver, setGameOver] = useState(null)
+  // Settings overlay: null = closed; { hasActiveRun } = open. Opened via the
+  // OPEN_SETTINGS event (start screen) or the pause menu.
+  const [settings, setSettings] = useState(null)
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
@@ -69,6 +73,10 @@ export default function GameCanvas() {
       game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => {
         if (scene !== 'gameover') setGameOver(null)
       }),
+      // Start screen asks the shell to open Settings (it's a React overlay).
+      game.events.on(EVENTS.OPEN_SETTINGS, ({ hasActiveRun = false } = {}) =>
+        setSettings({ hasActiveRun })
+      ),
       game.events.on(EVENTS.GAME_START, () => setSandals(0)),
       game.events.on(EVENTS.COLLECT_SANDAL, ({ ammo }) => setSandals(ammo)),
       game.events.on(EVENTS.PAUSE, ({ paused }) => setPaused(paused)),
@@ -133,6 +141,49 @@ export default function GameCanvas() {
     gameRef.current?.togglePause()
   }, [])
 
+  // Pause menu actions.
+  const resumeGame = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    gameRef.current?.setPaused(false)
+  }, [])
+
+  const openSettingsFromPause = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Open Settings as an overlay ON TOP of the frozen run. The run stays paused
+    // behind it; Save with no difficulty change (or Cancel) resumes it intact.
+    setSettings({ hasActiveRun: true })
+  }, [])
+
+  const exitToHome = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const game = gameRef.current
+    if (!game) return
+    game.setPaused(false)
+    game.go('start')
+  }, [])
+
+  // Apply the saved SFX on/off state to the live AudioSystem. Passed as a
+  // callback so SettingsPanel never touches the game ref during render.
+  const applyAudio = useCallback((sfx) => {
+    gameRef.current?.audio?.setEnabled(sfx)
+  }, [])
+
+  // Close the Settings overlay. `restart` true → the player changed difficulty
+  // during a paused run and confirmed: restart the run with the new difficulty.
+  // Otherwise just close; if a run was paused behind, leave it paused (the pause
+  // menu is still showing) so the player can Resume.
+  const closeSettings = useCallback((restart) => {
+    const game = gameRef.current
+    setSettings(null)
+    if (restart && game) {
+      game.setPaused(false)
+      game.go('play')
+    }
+  }, [])
+
   const handleTap = useCallback((e) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -178,6 +229,16 @@ export default function GameCanvas() {
           container's tap-to-retry. */}
       {gameOver && <ShareButtons result={gameOver} />}
 
+      {/* Settings overlay — opened from the start menu or the pause menu. Sits
+          above everything (incl. the pause overlay) via its own z-index. */}
+      {settings && (
+        <SettingsPanel
+          hasActiveRun={settings.hasActiveRun}
+          applyAudio={applyAudio}
+          onClose={closeSettings}
+        />
+      )}
+
       {/* Pause button — top-right, during play only. */}
       {inPlay && (
         <button
@@ -210,10 +271,10 @@ export default function GameCanvas() {
         </button>
       )}
 
-      {/* Paused overlay — dims the frozen frame, tap anywhere (or the button) to resume. */}
+      {/* Paused overlay — dims the frozen frame and shows the pause menu:
+          Main (resume) / Pengaturan / Keluar. */}
       {inPlay && paused && (
         <div
-          onPointerDown={togglePause}
           style={{
             position: 'absolute',
             inset: 0,
@@ -222,15 +283,19 @@ export default function GameCanvas() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
-            background: 'rgba(0,0,0,0.55)',
+            gap: 14,
+            background: 'rgba(0,0,0,0.6)',
             color: '#fff',
-            fontFamily: 'monospace',
+            fontFamily: 'sans-serif',
             touchAction: 'none',
           }}
         >
-          <div style={{ fontSize: 28, fontWeight: 'bold' }}>JEDA</div>
-          <div style={{ fontSize: 14, opacity: 0.8 }}>Ketuk untuk lanjut</div>
+          <div style={{ fontSize: 30, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 6 }}>
+            JEDA
+          </div>
+          <MenuButton label="▶ Resume" primary onPress={resumeGame} />
+          <MenuButton label="⚙ Pengaturan" onPress={openSettingsFromPause} />
+          <MenuButton label="✕ Keluar" onPress={exitToHome} />
         </div>
       )}
 
@@ -341,6 +406,34 @@ function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress, 
       ) : (
         sub && <span style={{ fontSize: 12, opacity: 0.85 }}>{sub}</span>
       )}
+    </button>
+  )
+}
+
+// Pause-menu button — full-width pill. Primary (resume) is accent-filled; the
+// rest are outlined. onPress fires on pointerdown for snappy menu feel.
+function MenuButton({ label, primary, onPress }) {
+  return (
+    <button
+      type="button"
+      onPointerDown={onPress}
+      style={{
+        width: 220,
+        padding: '12px 0',
+        borderRadius: 24,
+        border: primary ? 'none' : '2px solid rgba(255,255,255,0.6)',
+        background: primary ? '#e74c3c' : 'rgba(255,255,255,0.10)',
+        color: '#fff',
+        fontFamily: 'sans-serif',
+        fontWeight: 'bold',
+        fontSize: 17,
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'none',
+      }}
+    >
+      {label}
     </button>
   )
 }

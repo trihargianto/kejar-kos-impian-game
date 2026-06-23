@@ -38,6 +38,8 @@ export const EVENTS = Object.freeze({
   BOOST_END: 'boost:end',
   // UI
   HUD_TICK: 'hud:tick',
+  // UI navigation handled by the React shell (settings is a React overlay).
+  OPEN_SETTINGS: 'ui:open-settings',
 })
 
 export class EventBus {

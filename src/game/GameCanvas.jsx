@@ -13,6 +13,7 @@ const CLUSTER_SIZE = BTN_SIZE * 2 + GRID_GAP // 188
 
 export default function GameCanvas() {
   const canvasRef = useRef(null)
+  const containerRef = useRef(null)
   const gameRef = useRef(null)
   const [ripples, setRipples] = useState([])
   const rippleId = useRef(0)
@@ -36,12 +37,15 @@ export default function GameCanvas() {
     const canvas = canvasRef.current
     if (!canvas || gameRef.current) return
 
-    // Set canvas resolution to physical pixels to avoid blur on HiDPI screens
+    // Size the canvas to its FRAME container (the centered 9:16 phone frame on
+    // desktop, or the full viewport on mobile), not the raw window — so the game
+    // renders inside the frame and not across the whole desktop viewport.
     const dpr = window.devicePixelRatio || 1
-    const w = Math.round(window.innerWidth * dpr)
-    const h = Math.round(window.innerHeight * dpr)
-    canvas.width = w
-    canvas.height = h
+    const rect = (containerRef.current ?? canvas).getBoundingClientRect()
+    const cssW = Math.round(rect.width)
+    const cssH = Math.round(rect.height)
+    canvas.width = Math.round(cssW * dpr)
+    canvas.height = Math.round(cssH * dpr)
 
     // Read CSS env() safe area insets via a temporary element
     const probe = document.createElement('div')
@@ -57,10 +61,10 @@ export default function GameCanvas() {
     const game = new Game(canvas, { safeTop, safeBottom, dpr })
     gameRef.current = game
 
-    // The game stretches GAME_HEIGHT onto the viewport height, so the floor line
+    // The game stretches GAME_HEIGHT onto the frame height, so the floor line
     // sits at FLOOR_HEIGHT/GAME_HEIGHT of the way up from the bottom. That band
     // (in CSS px) is the only place buttons may live so they stay off the run.
-    setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * window.innerHeight)
+    setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * cssH)
 
     // Drive the on-screen buttons off the same event bus gameplay already uses.
     const offs = [
@@ -102,8 +106,25 @@ export default function GameCanvas() {
     }
     raf = requestAnimationFrame(pollDash)
 
+    // Keep the canvas matched to the frame container as it resizes (desktop
+    // window resize, orientation change). Re-fit canvas pixels + the engine dims.
+    const refit = () => {
+      const r = (containerRef.current ?? canvas).getBoundingClientRect()
+      const d = window.devicePixelRatio || 1
+      const cw = Math.round(r.width)
+      const ch = Math.round(r.height)
+      if (cw === 0 || ch === 0) return
+      canvas.width = Math.round(cw * d)
+      canvas.height = Math.round(ch * d)
+      game.resize(d)
+      setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * ch)
+    }
+    const ro = new ResizeObserver(refit)
+    if (containerRef.current) ro.observe(containerRef.current)
+
     return () => {
       cancelAnimationFrame(raf)
+      ro.disconnect()
       offs.forEach((off) => off())
       game.destroy()
       gameRef.current = null
@@ -198,7 +219,8 @@ export default function GameCanvas() {
 
   return (
     <div
-      style={{ position: 'relative', width: '100dvw', height: '100dvh', overflow: 'hidden' }}
+      ref={containerRef}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}
       onTouchStart={handleTap}
       onClick={handleTap}
     >

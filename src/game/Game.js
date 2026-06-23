@@ -38,14 +38,9 @@ export class Game {
     this.safeTop = safeTop
     this.safeBottom = safeBottom
 
-    // Game logic works in CSS pixels; ctx is pre-scaled to physical pixels
-    this.width = Math.round(canvas.width / dpr)
-    this.height = Math.round(canvas.height / dpr)
-    this.scale = this.width / GAME_WIDTH
-    this.floorY = Math.round(((GAME_HEIGHT - FLOOR_HEIGHT) / GAME_HEIGHT) * this.height)
-
-    // Scale context once so all draw calls use CSS pixel coordinates
-    this.ctx.scale(dpr, dpr)
+    // Game logic works in CSS pixels; ctx is pre-scaled to physical pixels.
+    this.dpr = dpr
+    this._applyDims()
 
     this._scenes = new SceneManager()
     // SceneManager doesn't know about the event bus; emit transitions here.
@@ -64,6 +59,25 @@ export class Game {
     this._loop = this._loop.bind(this)
     this._scenes.go('start')
     this._raf = requestAnimationFrame(this._loop)
+  }
+
+  // Recompute CSS-pixel dims + the floor line from the canvas size, and rescale
+  // the context to the device pixel ratio. Used at construct and on resize.
+  _applyDims() {
+    this.width = Math.round(this.canvas.width / this.dpr)
+    this.height = Math.round(this.canvas.height / this.dpr)
+    this.scale = this.width / GAME_WIDTH
+    this.floorY = Math.round(((GAME_HEIGHT - FLOOR_HEIGHT) / GAME_HEIGHT) * this.height)
+    // Reset any prior transform, then scale so all draw calls use CSS pixels.
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0)
+    this.ctx.scale(this.dpr, this.dpr)
+  }
+
+  // Re-fit when the frame size changes (desktop window resize / orientation).
+  // The caller sets canvas.width/height first; we just recompute derived dims.
+  resize(dpr = this.dpr) {
+    this.dpr = dpr
+    this._applyDims()
   }
 
   // Shared scene helper: a scene calls this to transition.

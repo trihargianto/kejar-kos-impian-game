@@ -8,10 +8,10 @@
 
 export const PROMPTS = Object.freeze([
   { at: 0, text: 'Tanggal tua, dompet kering — kabur ke kos impian!' },
-  { at: 200, text: 'Kos impian makin keliatan! Gas terus!' },
-  { at: 500, text: 'Setengah jalan ke kos idaman — jangan ketarik balik!' },
-  { at: 800, text: 'Dikit lagi sampai kos impian! Ayo!' },
-  { at: 1000, text: 'Kos impian di depan mata! Sprint pamungkas, jangan kasih kendor!' },
+  { at: 100, text: 'Kos impian makin keliatan! Gas terus!' },
+  { at: 250, text: 'Setengah jalan ke kos idaman — jangan ketarik balik!' },
+  { at: 400, text: 'Dikit lagi sampai kos impian! Ayo!' },
+  { at: 500, text: 'Kos impian di depan mata! Sprint pamungkas, jangan kasih kendor!' },
 ])
 
 export class PromptDirector {

@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { Obstacle } from '../src/game/entities/Obstacle.js'
 import { SpawnDirector } from '../src/game/scenes/play/SpawnDirector.js'
 import { CollectibleDirector } from '../src/game/scenes/play/CollectibleSystem.js'
-import { getKastaDef } from '../src/game/kasta.js'
+import { getKastaDef, KASTA_METERS } from '../src/game/kasta.js'
+
+// Derive sample distances from the single source of truth so retuning kasta
+// pacing never breaks these tests. KIPAS = inside tier 0, SINGGAH = inside
+// the Singgahsini band (where vacuum + smart-lock inject).
+const KIPAS = Math.floor(KASTA_METERS.AC_STANDAR / 2)
+const SINGGAH = Math.floor((KASTA_METERS.SINGGAHSINI + KASTA_METERS.KOS_IMPIAN) / 2)
 
 // Minimal game stub — Obstacle only reads scale/floorY/width.
 const mkGame = (over = {}) => ({
@@ -175,26 +181,26 @@ describe('Obstacle.special', () => {
 describe('SpawnDirector kasta-twist injection', () => {
   it('never injects vacuum or smart-lock during Kipas Angin', () => {
     const game = mkGame()
-    const ids = sampleSpawns(50, game) // well inside 0-300m
+    const ids = sampleSpawns(KIPAS, game) // well inside Kipas Angin
     expect(ids['floor:VACUUM'] ?? 0).toBe(0)
     expect(ids['mid:SMART-LOCK'] ?? 0).toBe(0)
   })
 
   it('injects vacuum during Singgahsini', () => {
     const game = mkGame()
-    const ids = sampleSpawns(850, game) // well inside 700-1000m
+    const ids = sampleSpawns(SINGGAH, game) // inside the Singgahsini band
     expect(ids['floor:VACUUM'] ?? 0).toBeGreaterThan(0)
   })
 
   it('injects smart-lock during Singgahsini (GDD §VI.3 "smart-lock butuh dash")', () => {
     const game = mkGame()
-    const ids = sampleSpawns(850, game)
+    const ids = sampleSpawns(SINGGAH, game)
     expect(ids['mid:SMART-LOCK'] ?? 0).toBeGreaterThan(0)
   })
 
   it('respects the kasta def flags driving injection', () => {
-    // Sanity: confirm 850m really is Singgahsini with both flags on.
-    const kasta = getKastaDef(850)
+    // Sanity: confirm SINGGAH really is Singgahsini with both flags on.
+    const kasta = getKastaDef(SINGGAH)
     expect(kasta.mechanics.vacuum).toBe(true)
     expect(kasta.mechanics.smartLock).toBe(true)
   })

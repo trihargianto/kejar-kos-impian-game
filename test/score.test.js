@@ -8,9 +8,16 @@ import {
 import {
   getKastaDef,
   KASTA_DEFS,
+  KASTA_METERS,
   getNextKastaThreshold,
   getNextKastaDef,
 } from '../src/game/kasta.js'
+
+// Tests read thresholds from KASTA_METERS (the single source of truth) instead
+// of hardcoding distances, so retuning the kasta pacing never breaks them. `mid`
+// picks a distance safely inside a tier band.
+const { AC_STANDAR: AC, SINGGAHSINI: SG, KOS_IMPIAN: GATE } = KASTA_METERS
+const mid = (lo, hi) => Math.floor((lo + hi) / 2)
 import { PlayScene } from '../src/game/scenes/PlayScene.js'
 import { getHighScore, submitScore } from '../src/game/systems/storage.js'
 
@@ -19,20 +26,20 @@ describe('score / progression', () => {
     it('returns the lowest rank at 0m', () => {
       expect(getRank(0)).toMatch(/Buronan Kelas Teri/)
     })
-    it('returns the lowest rank up to 99m', () => {
-      expect(getRank(99)).toMatch(/Buronan Kelas Teri/)
+    it('returns the lowest rank just below the AC threshold', () => {
+      expect(getRank(AC - 1)).toMatch(/Buronan Kelas Teri/)
     })
-    it('promotes to "Suhu Tanggal Tua" at 100m', () => {
-      expect(getRank(100)).toMatch(/Suhu Tanggal Tua/)
+    it('promotes to "Suhu Tanggal Tua" at the AC threshold', () => {
+      expect(getRank(AC)).toMatch(/Suhu Tanggal Tua/)
     })
-    it('promotes to "Buronan Kelas Kakap" at 500m', () => {
-      expect(getRank(500)).toMatch(/Buronan Kelas Kakap/)
+    it('promotes to "Buronan Kelas Kakap" at the Singgahsini threshold', () => {
+      expect(getRank(SG)).toMatch(/Buronan Kelas Kakap/)
     })
-    it('promotes to "Legenda" at 1000m', () => {
-      expect(getRank(1000)).toMatch(/Legenda/)
+    it('promotes to "Legenda" at the gate', () => {
+      expect(getRank(GATE)).toMatch(/Legenda/)
     })
-    it('stays at Legenda well past 1000m', () => {
-      expect(getRank(99999)).toMatch(/Legenda/)
+    it('stays at Legenda well past the gate', () => {
+      expect(getRank(GATE * 100)).toMatch(/Legenda/)
     })
   })
 
@@ -40,46 +47,46 @@ describe('score / progression', () => {
     it('starts at KIPAS ANGIN', () => {
       expect(getKasta(0)).toBe('KIPAS ANGIN')
     })
-    it('switches to AC STANDAR at 300m', () => {
-      expect(getKasta(299)).toBe('KIPAS ANGIN')
-      expect(getKasta(300)).toBe('AC STANDAR')
+    it('switches to AC STANDAR at its threshold', () => {
+      expect(getKasta(AC - 1)).toBe('KIPAS ANGIN')
+      expect(getKasta(AC)).toBe('AC STANDAR')
     })
-    it('switches to SINGGAHSINI at 700m', () => {
-      expect(getKasta(699)).toBe('AC STANDAR')
-      expect(getKasta(700)).toBe('SINGGAHSINI')
+    it('switches to SINGGAHSINI at its threshold', () => {
+      expect(getKasta(SG - 1)).toBe('AC STANDAR')
+      expect(getKasta(SG)).toBe('SINGGAHSINI')
     })
-    it('switches to KOS IMPIAN at 1000m', () => {
-      expect(getKasta(999)).toBe('SINGGAHSINI')
-      expect(getKasta(1000)).toBe('KOS IMPIAN')
+    it('switches to KOS IMPIAN at the gate', () => {
+      expect(getKasta(GATE - 1)).toBe('SINGGAHSINI')
+      expect(getKasta(GATE)).toBe('KOS IMPIAN')
     })
   })
 
   describe('getKastaDef', () => {
     it('returns the full record (data-driven mechanic flags)', () => {
-      const def = getKastaDef(750)
+      const def = getKastaDef(mid(SG, GATE))
       expect(def.id).toBe('singgahsini')
       expect(def.mechanics.vacuum).toBe(true)
       expect(def.mechanics.slippery).toBe(false)
     })
     it('releases combo cap in Mode Kos Impian', () => {
-      const def = getKastaDef(1500)
+      const def = getKastaDef(GATE * 1.5)
       expect(def.comboMultiplierCap).toBe(Infinity)
     })
     it('AC STANDAR is slippery', () => {
-      expect(getKastaDef(500).mechanics.slippery).toBe(true)
+      expect(getKastaDef(mid(AC, SG)).mechanics.slippery).toBe(true)
     })
     it('KIPAS ANGIN has no twist mechanics', () => {
-      const m = getKastaDef(100).mechanics
+      const m = getKastaDef(mid(0, AC)).mechanics
       expect(Object.values(m).every((v) => v === false)).toBe(true)
     })
   })
 
   describe('getNextKastaThreshold', () => {
     it('returns next tier early in the game', () => {
-      expect(getNextKastaThreshold(0)).toBe(300)
+      expect(getNextKastaThreshold(0)).toBe(AC)
     })
     it('returns null past the final tier', () => {
-      expect(getNextKastaThreshold(1500)).toBeNull()
+      expect(getNextKastaThreshold(GATE * 1.5)).toBeNull()
     })
   })
 
@@ -87,10 +94,10 @@ describe('score / progression', () => {
     it('returns the next tier definition (the one you fill toward)', () => {
       const next = getNextKastaDef(0) // in Kipas Angin → next is AC Standar
       expect(next.label).toBe('AC STANDAR')
-      expect(next.fromMeters).toBe(300)
+      expect(next.fromMeters).toBe(AC)
     })
     it('returns the upcoming def mid-tier', () => {
-      expect(getNextKastaDef(800).label).toBe('KOS IMPIAN') // in Singgahsini
+      expect(getNextKastaDef(mid(SG, GATE)).label).toBe('KOS IMPIAN') // in Singgahsini
     })
     it('returns null on the final tier (no next)', () => {
       expect(getNextKastaDef(1500)).toBeNull()

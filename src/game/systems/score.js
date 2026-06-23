@@ -1,6 +1,6 @@
 // ─── Scoring + progression (pure functions) ───────────────────────────────────
 // All functions here are side-effect free and trivially testable.
-import { getKastaDef } from '../kasta.js'
+import { getKastaDef, KASTA_METERS } from '../kasta.js'
 
 // Re-export kasta label map for callers that want a plain string lookup
 // (e.g. the HUD currently uses `KASTA.KIPAS_ANGIN` as a label).
@@ -11,12 +11,23 @@ export function getKasta(dist) {
   return getKastaDef(dist).label
 }
 
-// Distance (m) → end-screen rank title.
+// Comedic end-screen ranks. The boundaries are DERIVED from KASTA_METERS (the
+// single source of truth) so retuning the kasta thresholds moves the ranks with
+// them — one rank per kasta tier, no parallel set of magic numbers to keep in
+// sync. Order matches the kasta order (Kipas Angin → AC → Singgahsini → Impian).
+export const RANK_TITLES = Object.freeze([
+  '🥴 Buronan Kelas Teri', // Kipas Angin
+  '😤 Suhu Tanggal Tua', // AC Standar
+  '🔥 Buronan Kelas Kakap', // Singgahsini
+  '🏆 Legenda Kos-Kosan', // Kos Impian (gate+)
+])
+
+// Distance (m) → end-screen rank title, gated on the kasta thresholds.
 export function getRank(dist) {
-  if (dist < 100) return '🥴 Buronan Kelas Teri'
-  if (dist < 500) return '😤 Suhu Tanggal Tua'
-  if (dist < 1000) return '🔥 Buronan Kelas Kakap'
-  return '🏆 Legenda Kos-Kosan'
+  if (dist < KASTA_METERS.AC_STANDAR) return RANK_TITLES[0]
+  if (dist < KASTA_METERS.SINGGAHSINI) return RANK_TITLES[1]
+  if (dist < KASTA_METERS.KOS_IMPIAN) return RANK_TITLES[2]
+  return RANK_TITLES[3]
 }
 
 // Combo count → score multiplier. Cap is per-kasta (from KASTA_DEFS).

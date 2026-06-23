@@ -5,10 +5,12 @@
 // is always on screen, not just a distance number.
 //
 // Pure draw from a (dist) snapshot. Drawn behind obstacles/player, above the bg.
-import { getKastaDef, getNextKastaThreshold, getNextKastaDef } from '../../kasta.js'
+import { getKastaDef, getNextKastaThreshold, getNextKastaDef, KASTA_THRESHOLDS } from '../../kasta.js'
 import { FONTS } from '../../theme.js'
 
-const GATE = 1000 // meters to Mode Kos Impian
+// Derive the gate from the single source of truth so retuning KASTA_METERS
+// never leaves this constant stale.
+const GATE = KASTA_THRESHOLDS.IMPIAN // meters to Mode Kos Impian
 
 export class HorizonGoal {
   // `dist` meters; `game` provides width/height/scale/floorY.

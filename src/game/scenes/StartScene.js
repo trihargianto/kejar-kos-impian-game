@@ -81,11 +81,17 @@ export class StartScene {
     }
 
     // ── Tagline (3 lines) ──
+    // Use a TOP baseline so each line is placed by its top edge — with the
+    // default alphabetic baseline the first line's ascenders rose above `y` and
+    // collided with the logo, clipping the text. Reset to alphabetic after.
     ctx.fillStyle = COLORS.ink
     ctx.font = `${Math.round(14 * S)}px ${FONTS.sans}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
     const taglineLines = ['Tanggal tua, dompet kering,', 'Ibu Kos gedor pintu...', 'Kabur ke kos impian!']
     const lineH = Math.round(20 * S)
     taglineLines.forEach((t, i) => ctx.fillText(t, cx, y + i * lineH))
+    ctx.textBaseline = 'alphabetic'
     y += taglineLines.length * lineH + Math.round(18 * S)
 
     // ── Menu buttons — directly below the tagline (no scrim; nothing behind) ──

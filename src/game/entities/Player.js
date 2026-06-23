@@ -298,6 +298,7 @@ export class Player {
     // single run sprite gets a procedural bob/tilt/squash and reads as alive
     // instead of a stiff static decal. Frozen while airborne/sliding/dashing.
     this._runPhase = 0
+    this._boostPhase = 0 // animates the Kopi Sachet aura + speed lines
     this._lastFloats = []
     this.fsm = new StateMachine(
       'running',
@@ -434,6 +435,7 @@ export class Player {
   update(dt) {
     this.fsm.update(dt)
     if (this.boostTimer > 0) this.boostTimer -= dt
+    if (this.boosting) this._boostPhase += dt
     // Advance the run cycle only when actually pounding the floor. Airborne /
     // sliding / dashing freeze it (their own poses read the motion), and we ease
     // back toward a neutral foot-plant so resuming the run doesn't pop.
@@ -473,6 +475,11 @@ export class Player {
     else if (!this.grounded && assets?.has('player:jump')) spriteId = 'player:jump'
     const sprite = assets?.has(spriteId) ? assets.image(spriteId) : null
 
+    // Kopi Sachet boost FX — a warm pulsing aura + horizontal speed lines behind
+    // the player (GDD §VII passive / §XIII speed-line feel). Drawn first so the
+    // sprite/placeholder sits on top. Telegraphs "ngebut + imun".
+    if (this.boosting) this._drawBoostFx(ctx, S, h, drawY)
+
     if (visible) {
       // Dash echo: faint trailing copies behind the player to sell the burst.
       if (this.dashing) {
@@ -497,6 +504,50 @@ export class Player {
         this._drawPlaceholder(ctx, S, h, drawY)
       }
     }
+  }
+
+  // Kopi Sachet boost: warm aura glow + horizontal speed lines behind the
+  // player, pulsing while active and fading out in the last ~0.6s of the window.
+  _drawBoostFx(ctx, S, h, drawY) {
+    const cx = this.x + this.w / 2
+    const cy = drawY + h / 2
+    const t = this._boostPhase
+    // Fade the whole effect out as the boost runs down so it doesn't pop off.
+    const fade = Math.min(1, this.boostTimer / 0.6)
+    const pulse = 0.7 + 0.3 * Math.sin(t * 10)
+
+    ctx.save()
+    ctx.globalAlpha = fade
+
+    // 1. Warm radial aura (kopi/energy = golden-orange).
+    const r = this.w * (1.6 + 0.15 * Math.sin(t * 10))
+    const g = ctx.createRadialGradient(cx, cy, this.w * 0.2, cx, cy, r)
+    g.addColorStop(0, `rgba(255,190,70,${0.45 * pulse})`)
+    g.addColorStop(0.6, `rgba(255,150,40,${0.18 * pulse})`)
+    g.addColorStop(1, 'rgba(255,150,40,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 2. Speed lines streaking backward (left) past the player, scrolling fast.
+    ctx.strokeStyle = `rgba(255,236,180,${0.8 * fade})`
+    ctx.lineWidth = Math.max(1.5, 2 * S)
+    const lines = 4
+    for (let i = 0; i < lines; i++) {
+      const ly = drawY + (h / (lines + 1)) * (i + 1)
+      // Each line scrolls left, offset per index, wrapping over a short span.
+      const span = this.w * 2.4
+      const off = ((t * 900 * S + i * 37) % span)
+      const x2 = this.x - off
+      const len = this.w * (0.5 + 0.4 * ((i + 1) / lines))
+      ctx.beginPath()
+      ctx.moveTo(x2, ly)
+      ctx.lineTo(x2 + len, ly)
+      ctx.stroke()
+    }
+
+    ctx.restore()
   }
 
   // Slide is a horizontal pose: the body stretches out wider than the hitbox.

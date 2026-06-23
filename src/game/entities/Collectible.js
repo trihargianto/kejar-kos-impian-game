@@ -57,6 +57,12 @@ export class Collectible {
   draw(ctx) {
     const yb = this.y + Math.sin(this._bob) * (this.r * 0.18)
 
+    // Reward telegraph: glow halo + bright ring + orbiting sparkles behind every
+    // collectible so players instantly read "grab this" vs an obstacle to dodge.
+    // Collectibles share a lane with obstacles by design (greed placement, GDD
+    // §VII), so this cue — not position — is what distinguishes them.
+    this._drawTelegraph(ctx, yb)
+
     // Sprite-first (GDD §XVI Step 4). Draw into the 2r×2r box centered on the
     // bobbing position; falls back to the primitive placeholder per kind below.
     const id = `item:${this.kind}`
@@ -117,6 +123,71 @@ export class Collectible {
     ctx.textBaseline = 'middle'
     ctx.fillText('SNDL', this.x, yb)
     ctx.textBaseline = 'alphabetic'
+  }
+
+  // Reward telegraph. Tiered by rarity so the screen doesn't get noisy:
+  //   coins   — spawn often → a soft gold glow only (calm, just enough to read
+  //             as "grab").
+  //   powerups— rare + important → full glow + bright ring + orbiting sparkles
+  //             so they clearly stand out.
+  // Pulse/orbit reuse the bob phase so it costs no extra state.
+  _drawTelegraph(ctx, yb) {
+    const t = this._bob
+    const pulse = 0.7 + 0.3 * Math.sin(t * 0.8)
+
+    if (this.kind === 'coin') {
+      // Subtle gold glow only.
+      const gr = this.r * (1.5 + 0.15 * Math.sin(t * 0.8))
+      const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
+      grad.addColorStop(0, `rgba(255,205,50,${0.4 * pulse})`)
+      grad.addColorStop(0.6, `rgba(255,205,50,${0.16 * pulse})`)
+      grad.addColorStop(1, 'rgba(255,205,50,0)')
+      ctx.save()
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+      return
+    }
+
+    // Power-ups (kopi, sandal): full treatment in mint-green.
+    const rgb = '70,235,165'
+    ctx.save()
+
+    // 1. Glow halo.
+    const gr = this.r * (1.9 + 0.2 * Math.sin(t * 0.8))
+    const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
+    grad.addColorStop(0, `rgba(${rgb},${0.6 * pulse})`)
+    grad.addColorStop(0.6, `rgba(${rgb},${0.25 * pulse})`)
+    grad.addColorStop(1, `rgba(${rgb},0)`)
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 2. Bright ring hugging the item.
+    ctx.lineWidth = Math.max(1.5, this.r * 0.22)
+    ctx.strokeStyle = `rgba(${rgb},${0.85 * pulse})`
+    ctx.beginPath()
+    ctx.arc(this.x, yb, this.r * 1.32, 0, Math.PI * 2)
+    ctx.stroke()
+
+    // 3. Orbiting sparkles.
+    const sparkles = 3
+    const orbit = this.r * 1.55
+    for (let i = 0; i < sparkles; i++) {
+      const a = t * 1.2 + (i / sparkles) * Math.PI * 2
+      const sx = this.x + Math.cos(a) * orbit
+      const sy = yb + Math.sin(a) * orbit
+      const twinkle = 0.5 + 0.5 * Math.sin(t * 3 + i)
+      ctx.fillStyle = `rgba(255,255,255,${0.85 * twinkle})`
+      ctx.beginPath()
+      ctx.arc(sx, sy, Math.max(1.2, this.r * 0.18 * twinkle), 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    ctx.restore()
   }
 }
 

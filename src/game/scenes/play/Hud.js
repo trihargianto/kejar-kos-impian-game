@@ -18,11 +18,11 @@
 // state lives elsewhere (KOPI in GroundPanel, SANDAL on its button) so the top
 // stays focused on score/distance/combo.
 import { COLORS, FONTS } from '../../theme.js'
-import { START_LIVES } from '../../constants.js'
 
 /**
  * @typedef {Object} HudSnapshot
  * @property {number} lives
+ * @property {number} maxLives
  * @property {number} dist
  * @property {number} score
  * @property {number} combo
@@ -57,8 +57,9 @@ export class Hud {
     ctx.fillStyle = COLORS.accent // hearts read as red regardless of background
     ctx.font = `${fs(22)}px ${FONTS.sans}`
     ctx.textAlign = 'left'
+    const maxLives = snap.maxLives ?? snap.lives
     ctx.fillText(
-      '♥'.repeat(snap.lives) + '♡'.repeat(Math.max(0, START_LIVES - snap.lives)),
+      '♥'.repeat(snap.lives) + '♡'.repeat(Math.max(0, maxLives - snap.lives)),
       fs(12),
       TOP + fs(22)
     )

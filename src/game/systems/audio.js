@@ -94,6 +94,11 @@ export class AudioSystem {
 
     // Power-ups (GDD §VII). Kopi pickup = warm rising chord; sandal pickup =
     // short bright blip. Throw = percussive thwack; boost start = zoom-up tone.
+    sub(EVENTS.COLLECT_HEART, () => {
+      // Rising triad: bright & celebratory, distinct from kopi's lower chord.
+      this._tone(523, 0.12, 'triangle', 0.17, 784)
+      this._tone(784, 0.18, 'triangle', 0.15, 1047)
+    })
     sub(EVENTS.COLLECT_KOPI, () => {
       this._tone(440, 0.18, 'triangle', 0.18, 660)
       this._tone(660, 0.18, 'triangle', 0.16, 880)

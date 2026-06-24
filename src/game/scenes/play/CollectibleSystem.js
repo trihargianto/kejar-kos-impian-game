@@ -13,6 +13,7 @@ import {
   GRAVITY,
   KOPI_INTERVAL,
   SANDAL_INTERVAL,
+  HEART_INTERVAL,
 } from '../../constants.js'
 import { Collectible } from '../../entities/Collectible.js'
 
@@ -69,6 +70,7 @@ export class CollectibleDirector {
     this.coinTimer = 0
     this.kopiTimer = 0
     this.sandalTimer = 0
+    this.heartTimer = 0
   }
 
   reset() {
@@ -79,6 +81,9 @@ export class CollectibleDirector {
     // otherwise a 22s+ first spawn means most short runs never discover them.
     this.kopiTimer = KOPI_INTERVAL * 0.5
     this.sandalTimer = SANDAL_INTERVAL * 0.5
+    // Heart first-spawn at ~60% of interval — early enough to be discovered,
+    // rare enough that it stays meaningful.
+    this.heartTimer = HEART_INTERVAL * 0.6
   }
 
   // Returns the obstacle closest to the right edge that is still approaching
@@ -99,6 +104,7 @@ export class CollectibleDirector {
     this.coinTimer -= dt
     this.kopiTimer -= dt
     this.sandalTimer -= dt
+    this.heartTimer -= dt
 
     if (this.coinTimer <= 0) {
       this.coinTimer = COIN_INTERVAL * (0.7 + Math.random() * 0.6)
@@ -111,6 +117,10 @@ export class CollectibleDirector {
     if (this.sandalTimer <= 0) {
       this.sandalTimer = SANDAL_INTERVAL * (0.85 + Math.random() * 0.4)
       this._spawnSandal(game, obstacles)
+    }
+    if (this.heartTimer <= 0) {
+      this.heartTimer = HEART_INTERVAL * (0.85 + Math.random() * 0.4)
+      this._spawnHeart(game, obstacles)
     }
   }
 
@@ -180,11 +190,27 @@ export class CollectibleDirector {
     this.items.push(new Collectible('sandal', game, lane))
   }
 
+  // Heart collectible: restores 1 life (capped at max). Rare — rarer than kopi.
+  // Spawns in floor lane so it's always reachable without committing to a jump;
+  // the life-restore value is reward enough without a greed placement.
+  _spawnHeart(game, obstacles = []) {
+    const L = lanesFor(game)
+    const margin = Math.round(CLEARANCE * game.scale)
+    const r = Math.round(20 * game.scale) // matches HEART_R in Collectible
+    const x = game.width + r * 2
+    const order = [L.FLOOR, L.MID, L.HIGH]
+    const lane = order.find((y) => clearsObstacles(x, y, r, obstacles, margin))
+    if (lane === undefined) return
+    this.items.push(new Collectible('heart', game, lane))
+  }
+
   // Scroll + resolve. Returns:
   //   coins     — number of coins collected this frame (combo fuel + budget)
   //   powerups  — array of kind strings ('kopi' | 'sandal') collected this frame
+  //   hearts    — number of hearts collected this frame
   update(dt, speed, playerBounds) {
     let coins = 0
+    let hearts = 0
     const powerups = []
     for (let i = this.items.length - 1; i >= 0; i--) {
       const c = this.items[i]
@@ -193,6 +219,8 @@ export class CollectibleDirector {
         c.collected = true
         if (c.kind === 'coin') {
           coins++
+        } else if (c.kind === 'heart') {
+          hearts++
         } else if (c.kind === 'kopi' || c.kind === 'sandal') {
           powerups.push(c.kind)
         }
@@ -201,7 +229,7 @@ export class CollectibleDirector {
       }
       if (c.offscreen) this.items.splice(i, 1)
     }
-    return { coins, powerups }
+    return { coins, powerups, hearts }
   }
 
   draw(ctx) {

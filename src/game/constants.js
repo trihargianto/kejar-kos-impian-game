@@ -57,6 +57,9 @@ export const KOPI_INTERVAL = 22.0 // base seconds between kopi spawns (rare)
 export const SANDAL_AMMO = 3
 export const SANDAL_INTERVAL = 28.0 // base seconds between sandal spawns (rare)
 
+// Heart collectible: restores 1 life if below max lives. Rare — rarer than kopi.
+export const HEART_INTERVAL = 35.0 // base seconds between heart spawns
+
 // ─── Obstacle spawning ────────────────────────────────────────────────────────
 export const SPAWN_INTERVAL_MIN = 1.1 // seconds between spawns (minimum, shrinks with distance)
 export const SPAWN_INTERVAL_MAX = 2.2

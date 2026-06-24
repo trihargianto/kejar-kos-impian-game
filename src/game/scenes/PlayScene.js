@@ -79,6 +79,8 @@ export class PlayScene {
     this.sandals = []
     this.activePrompt = null
     this._promptTimer = 0
+    this._flashTimer = 0
+    this._flashColor = null
     this.spawner.reset()
     this.combo.reset()
     this.collectibles.reset()
@@ -86,6 +88,8 @@ export class PlayScene {
     this.player.reset()
     this.game.floats.length = 0
     this._lastKastaId = kasta.id
+    this._flashTimer = 0
+    this._flashColor = null
     this.game.events?.emit(EVENTS.GAME_START)
   }
 
@@ -118,6 +122,7 @@ export class PlayScene {
     this.combo.update(dt)
     this._updateKasta()
     this._updatePrompts(dt)
+    if (this._flashTimer > 0) this._flashTimer -= dt
   }
 
   // ── Sub-steps ───────────────────────────────────────────────────────────────
@@ -211,7 +216,7 @@ export class PlayScene {
     // Spawn first (cadence + greed placement near upcoming obstacles), then
     // scroll + resolve pickups. Spawn reads this.obs so coins land near traffic.
     this.collectibles.spawn(dt, this.game, this.obs)
-    const { coins, powerups } = this.collectibles.update(
+    const { coins, powerups, hearts } = this.collectibles.update(
       dt,
       this.spd * S,
       this.player.bounds
@@ -228,10 +233,41 @@ export class PlayScene {
       this.game.events?.emit(EVENTS.COLLECT_COIN, { coins, total: this.coins })
     }
 
+    if (hearts > 0) {
+      this._applyHeart()
+    }
+
     for (const kind of powerups) {
       if (kind === 'kopi') this._applyKopi()
       else if (kind === 'sandal') this._applySandal()
     }
+  }
+
+  // Heart collectible: restore 1 life, capped at the difficulty's max lives.
+  _applyHeart() {
+    const maxLives = this.diff.lives
+    if (this.lives >= maxLives) return // already full — silently skip
+    this.lives++
+    const S = this.game.scale
+    const p = this.player
+    this.game.floats.push(
+      new FloatText('+1 NYAWA!', p.x + p.w / 2, p.y - 40 * S, '#e74c3c', Math.round(26 * S))
+    )
+    // Gentle pink flash + light shake — celebratory, not alarming.
+    this._flashColor = 'rgba(231,76,60,0.22)'
+    this._flashTimer = 0.35
+    this.game.shake.trigger(4 * S, 0.18)
+    this.game.events?.emit(EVENTS.COLLECT_HEART, { lives: this.lives })
+  }
+
+  // Full-screen color overlay fades out over its timer window.
+  _drawFlash(ctx) {
+    const alpha = this._flashTimer / 0.35
+    ctx.save()
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = this._flashColor
+    ctx.fillRect(0, 0, this.game.width, this.game.height)
+    ctx.restore()
   }
 
   // Kopi Sachet (passive, GDD §VII). Player.applyKopi extends both the boost
@@ -340,9 +376,16 @@ export class PlayScene {
     const kasta = getKastaDef(this.dist)
     if (kasta.id !== this._lastKastaId) {
       this._lastKastaId = kasta.id
+      // Full heal on kasta up — reward for reaching the next tier.
+      this.lives = this.diff.lives
+      this._flashColor = 'rgba(231,76,60,0.18)'
+      this._flashTimer = 0.4
       this.game.events?.emit(EVENTS.KASTA_UP, { id: kasta.id, label: kasta.label })
       this.game.floats.push(
         new FloatText(kasta.label, this.game.width / 2, this.game.height * 0.4, COLORS.gold, 28)
+      )
+      this.game.floats.push(
+        new FloatText('NYAWA PENUH!', this.game.width / 2, this.game.height * 0.48, '#e74c3c', 22)
       )
       // 1000m gate: entering endless Mode Kos Impian is its own beat (§VI.4).
       if (kasta.mechanics?.endless) {
@@ -473,6 +516,7 @@ export class PlayScene {
 
     this.hud.draw(ctx, this.game, {
       lives: this.lives,
+      maxLives: this.diff.lives,
       dist: this.dist,
       score: this.score,
       combo: this.combo.combo,
@@ -481,6 +525,7 @@ export class PlayScene {
     })
 
     if (this.activePrompt) this._drawPrompt(ctx)
+    if (this._flashTimer > 0 && this._flashColor) this._drawFlash(ctx)
   }
 
   // Milestone story prompt — a fading banner near the upper third.

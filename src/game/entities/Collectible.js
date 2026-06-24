@@ -1,9 +1,10 @@
 // ─── Collectibles ─────────────────────────────────────────────────────────────
-// Three kinds, per GDD §VII (Greed Mechanic) + §VII Power-ups subsection:
+// Four kinds, per GDD §VII (Greed Mechanic) + §VII Power-ups subsection:
 //   coin   — "Recehan": fuels combo + currency (currency = budget for the
 //             §IX reveal). Placed near obstacles so the greed line is risky.
 //   kopi   — "Kopi Sachet" (passive power-up): 5s speed + immune on pickup.
 //   sandal — "Sandal Jepit" (active power-up): resets ammo to 3 on pickup.
+//   heart  — Restores 1 life (capped at max lives for the current difficulty).
 //
 // Same scroll/offscreen contract as Obstacle so the play loop treats them
 // uniformly. Collection is a circle-vs-AABB test in CollectibleSystem; the
@@ -17,10 +18,11 @@ import { roundRect } from '../core/utils.js'
 const COIN_R = 11 // design-space radius
 const KOPI_R = 20
 const SANDAL_R = 22
+const HEART_R = 20
 
 export class Collectible {
   /**
-   * @param {'coin'|'kopi'|'sandal'} kind
+   * @param {'coin'|'kopi'|'sandal'|'heart'} kind
    * @param {object} game        provides scale + width
    * @param {number} runtimeY    y in RUNTIME px (already scaled, anchored to
    *                             game.floorY). NOT design space — the floor's
@@ -109,31 +111,91 @@ export class Collectible {
       return
     }
 
-    // sandal — flat flip-flop silhouette in blue (placeholder).
-    ctx.fillStyle = '#2980b9'
-    roundRect(ctx, this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
-    ctx.strokeStyle = '#1b4f72'
-    ctx.lineWidth = Math.max(1, this.r * 0.1)
+    if (this.kind === 'sandal') {
+      // sandal — flat flip-flop silhouette in blue (placeholder).
+      ctx.fillStyle = '#2980b9'
+      roundRect(ctx, this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
+      ctx.strokeStyle = '#1b4f72'
+      ctx.lineWidth = Math.max(1, this.r * 0.1)
+      ctx.beginPath()
+      ctx.roundRect(this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
+      ctx.stroke()
+      ctx.fillStyle = '#fff'
+      ctx.font = `bold ${this._labelSize}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('SNDL', this.x, yb)
+      ctx.textBaseline = 'alphabetic'
+      return
+    }
+
+    // heart — red heart shape drawn via bezier curves.
+    ctx.save()
+    ctx.fillStyle = '#e74c3c'
+    const r = this.r
     ctx.beginPath()
-    ctx.roundRect(this.x - this.r, yb - this.r * 0.7, this.r * 2, this.r * 1.4, this.r * 0.4)
+    // Heart: two bumps on top, point at bottom.
+    ctx.moveTo(this.x, yb + r * 0.55)
+    ctx.bezierCurveTo(this.x - r * 1.1, yb - r * 0.1, this.x - r * 1.1, yb - r * 0.9, this.x, yb - r * 0.35)
+    ctx.bezierCurveTo(this.x + r * 1.1, yb - r * 0.9, this.x + r * 1.1, yb - r * 0.1, this.x, yb + r * 0.55)
+    ctx.fill()
+    ctx.strokeStyle = '#c0392b'
+    ctx.lineWidth = Math.max(1, r * 0.1)
     ctx.stroke()
-    ctx.fillStyle = '#fff'
-    ctx.font = `bold ${this._labelSize}px monospace`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('SNDL', this.x, yb)
-    ctx.textBaseline = 'alphabetic'
+    ctx.restore()
   }
 
   // Reward telegraph. Tiered by rarity so the screen doesn't get noisy:
   //   coins   — spawn often → a soft gold glow only (calm, just enough to read
   //             as "grab").
+  //   heart   — life-restore → warm red glow (distinct from green power-up glow).
   //   powerups— rare + important → full glow + bright ring + orbiting sparkles
   //             so they clearly stand out.
   // Pulse/orbit reuse the bob phase so it costs no extra state.
   _drawTelegraph(ctx, yb) {
     const t = this._bob
     const pulse = 0.7 + 0.3 * Math.sin(t * 0.8)
+
+    if (this.kind === 'heart') {
+      // Heart: full treatment in red — same tier as power-ups (rare, important).
+      const rgb = '231,76,60'
+      ctx.save()
+
+      // 1. Glow halo.
+      const gr = this.r * (1.9 + 0.2 * Math.sin(t * 0.8))
+      const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
+      grad.addColorStop(0, `rgba(${rgb},${0.6 * pulse})`)
+      grad.addColorStop(0.6, `rgba(${rgb},${0.25 * pulse})`)
+      grad.addColorStop(1, `rgba(${rgb},0)`)
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 2. Bright ring hugging the item.
+      ctx.lineWidth = Math.max(1.5, this.r * 0.22)
+      ctx.strokeStyle = `rgba(${rgb},${0.85 * pulse})`
+      ctx.beginPath()
+      ctx.arc(this.x, yb, this.r * 1.32, 0, Math.PI * 2)
+      ctx.stroke()
+
+      // 3. Orbiting sparkles — pink-white tint so they read as life energy.
+      const sparkles = 4
+      const orbit = this.r * 1.55
+      for (let i = 0; i < sparkles; i++) {
+        const a = t * 1.4 + (i / sparkles) * Math.PI * 2
+        const sx = this.x + Math.cos(a) * orbit
+        const sy = yb + Math.sin(a) * orbit
+        const twinkle = 0.5 + 0.5 * Math.sin(t * 3 + i)
+        ctx.fillStyle = `rgba(255,180,180,${0.9 * twinkle})`
+        ctx.beginPath()
+        ctx.arc(sx, sy, Math.max(1.2, this.r * 0.18 * twinkle), 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      ctx.restore()
+      return
+    }
 
     if (this.kind === 'coin') {
       // Subtle gold glow only.
@@ -195,5 +257,6 @@ function radiusFor(kind) {
   if (kind === 'coin') return COIN_R
   if (kind === 'kopi') return KOPI_R
   if (kind === 'sandal') return SANDAL_R
+  if (kind === 'heart') return HEART_R
   return KOPI_R
 }

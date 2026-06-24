@@ -30,6 +30,7 @@ export const EVENTS = Object.freeze({
   PROMPT: 'progress:prompt', // milestone story prompt fired
   // Collectibles (Phase 1+)
   COLLECT_COIN: 'collect:coin',
+  COLLECT_HEART: 'collect:heart',
   // Power-ups (GDD §VII)
   COLLECT_KOPI: 'collect:kopi',
   COLLECT_SANDAL: 'collect:sandal',

@@ -88,7 +88,7 @@ export class StartScene {
     ctx.font = `${Math.round(14 * S)}px ${FONTS.sans}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    const taglineLines = ['Tanggal tua, dompet kering,', 'Ibu Kos gedor pintu...', 'Kabur ke kos impian!']
+    const taglineLines = ['Kos impian menanti!', 'Lari sekencang mungkin,', 'raih kos terbaikmu!']
     const lineH = Math.round(20 * S)
     taglineLines.forEach((t, i) => ctx.fillText(t, cx, y + i * lineH))
     ctx.textBaseline = 'alphabetic'

@@ -16,10 +16,10 @@ export function getKasta(dist) {
 // them — one rank per kasta tier, no parallel set of magic numbers to keep in
 // sync. Order matches the kasta order (Kipas Angin → AC → Singgahsini → Impian).
 export const RANK_TITLES = Object.freeze([
-  '🥴 Buronan Kelas Teri', // Kipas Angin
-  '😤 Suhu Tanggal Tua', // AC Standar
-  '🔥 Buronan Kelas Kakap', // Singgahsini
-  '🏆 Legenda Kos-Kosan', // Kos Impian (gate+)
+  '🥴 Pejuang Kos Pemula', // Kipas Angin
+  '😤 Petarung Tangguh', // AC Standar
+  '🔥 Legenda Kos Hunter', // Singgahsini
+  '🏆 Sultan Kos Impian', // Kos Impian (gate+)
 ])
 
 // Distance (m) → end-screen rank title, gated on the kasta thresholds.
@@ -39,6 +39,6 @@ export function comboMultiplier(combo, cap = 8) {
 // Combo count → flavor text shown on a near-miss.
 export function nearMissText(combo) {
   if (combo <= 2) return 'Nyaris!'
-  if (combo <= 6) return 'GILA!'
-  return 'DPO!'
+  if (combo <= 6) return 'GOKIL!'
+  return 'SUPER!'
 }

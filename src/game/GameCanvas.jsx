@@ -210,6 +210,9 @@ export default function GameCanvas() {
     e.stopPropagation()
     const game = gameRef.current
     if (!game) return
+    // Quitting mid-run discards the current progress — confirm first.
+    const ok = window.confirm('Keluar sekarang? Progres permainan ini akan hilang.')
+    if (!ok) return
     game.setPaused(false)
     game.go('start')
   }, [])

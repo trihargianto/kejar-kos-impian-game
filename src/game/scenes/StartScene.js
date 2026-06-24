@@ -1,6 +1,7 @@
 // ─── Start scene ──────────────────────────────────────────────────────────────
 import { COLORS, FONTS, ctaPulse } from '../theme.js'
 import { getHighScore } from '../systems/storage.js'
+import { formatScore } from '../systems/score.js'
 import { EVENTS } from '../core/EventBus.js'
 
 export class StartScene {
@@ -114,7 +115,7 @@ export class StartScene {
     if (this.highScore > 0) {
       ctx.fillStyle = COLORS.accent
       ctx.font = `bold ${Math.round(15 * S)}px ${FONTS.mono}`
-      ctx.fillText(`REKOR: ${this.highScore}m`, cx, floorY + Math.round(34 * S))
+      ctx.fillText(`REKOR: ${formatScore(this.highScore)}m`, cx, floorY + Math.round(34 * S))
     }
     ctx.fillStyle = COLORS.muted
     ctx.font = `${Math.round(11 * S)}px ${FONTS.mono}`

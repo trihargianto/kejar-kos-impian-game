@@ -36,6 +36,12 @@ export function comboMultiplier(combo, cap = 8) {
   return Math.min(Math.pow(2, Math.floor(combo / 2)), cap)
 }
 
+// Score number → human-readable string with thousand separators.
+// e.g. 1234567 → "1.234.567"
+export function formatScore(n) {
+  return Math.floor(n).toLocaleString('id-ID')
+}
+
 // Combo count → flavor text shown on a near-miss.
 export function nearMissText(combo) {
   if (combo <= 2) return 'Nyaris!'

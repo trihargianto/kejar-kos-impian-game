@@ -1,7 +1,7 @@
 // ─── Game over scene ──────────────────────────────────────────────────────────
 import { COLORS, FONTS, ctaPulse } from '../theme.js'
 import { INTENT } from '../core/Input.js'
-import { getRank } from '../systems/score.js'
+import { getRank, formatScore } from '../systems/score.js'
 import { submitScore } from '../systems/storage.js'
 import {
   matchDreamKos,
@@ -91,7 +91,7 @@ export class GameOverScene {
     ctx.fillStyle = this.isNewRecord ? COLORS.gold : COLORS.white
     ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
     ctx.fillText(
-      `SKOR ${Math.floor(this.score)}${this.isNewRecord ? '  ★' : ''}`,
+      `SKOR ${formatScore(this.score)}${this.isNewRecord ? '  ★' : ''}`,
       W / 2,
       H * 0.4
     )
@@ -107,7 +107,7 @@ export class GameOverScene {
     } else {
       ctx.fillStyle = COLORS.faint
       ctx.font = `${Math.round(15 * S)}px ${FONTS.mono}`
-      ctx.fillText(`Rekor: ${Math.floor(this.highScore)}`, W / 2, H * 0.84)
+      ctx.fillText(`Rekor: ${formatScore(this.highScore)}`, W / 2, H * 0.84)
     }
 
     ctx.globalAlpha = ctaPulse(this.time)

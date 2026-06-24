@@ -178,6 +178,15 @@ export class Obstacle {
     this._bob = 0
     this.passed = false
     this.nearMissed = false
+    // "Mental" state: when a Kopi-boosted player rams it, the obstacle is flung
+    // out (velocity + spin + fade) instead of scrolling. Collision is disabled
+    // while knocked (see CollisionSystem) and the scene drops it once offscreen.
+    this.knocked = false
+    this._kvx = 0
+    this._kvy = 0
+    this._krot = 0
+    this._krotV = 0
+    this._kfade = 1
     this._labelSize = Math.round(11 * S)
     this._labelLineH = Math.round(13 * S)
   }
@@ -225,20 +234,64 @@ export class Obstacle {
     return { x: this.x, y: this.y, w: this.w, h: this.h }
   }
 
+  // Fling the obstacle out (Kopi smash). Forward-up arc + spin + fade, with a
+  // little random spread so a string of smashes doesn't look identical.
+  knockAway() {
+    const S = this.game.scale
+    this.knocked = true
+    // Forward (right) + up, scaled to the frame. Random spread on each axis.
+    this._kvx = (260 + Math.random() * 220) * S
+    this._kvy = -(360 + Math.random() * 200) * S
+    this._krotV = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 6)
+    this._kfade = 1
+  }
+
   update(dt, speed) {
+    if (this.knocked) {
+      const S = this.game.scale
+      this._kvy += 1400 * S * dt // gravity pulls the arc back down
+      this.x += this._kvx * dt
+      this.y += this._kvy * dt
+      this._krot += this._krotV * dt
+      this._kfade = Math.max(0, this._kfade - dt * 1.6)
+      return
+    }
     this.x -= speed * this.speedScale * dt
     if (this._bobOn) this._bob += dt * 9
   }
 
   get offscreen() {
+    if (this.knocked) {
+      // Gone once it has faded out or flown well past any edge.
+      return this._kfade <= 0 || this.x > this.game.width + 200 || this.y > this.game.height + 200
+    }
     return this.x + this.w < -100
   }
 
   draw(ctx) {
+    // Knocked-away (Kopi smash): spin + fade about the center. Wrap the normal
+    // draw in a transform so sprite/placeholder paths stay unchanged.
+    if (this.knocked) {
+      ctx.save()
+      ctx.globalAlpha = this._kfade
+      const cx = this.x + this.w / 2
+      const cy = this.y + this.h / 2
+      ctx.translate(cx, cy)
+      ctx.rotate(this._krot)
+      ctx.translate(-cx, -cy)
+      this._drawBody(ctx, this.y)
+      ctx.restore()
+      return
+    }
     // Draw-only bob: shifts the sprite a few px vertically so flying objects
     // flutter. Collision still uses this.y (bounds), so the verb never changes.
     const yb = this._bobOn ? this.y + Math.sin(this._bob) * (this.h * 0.18) : this.y
+    this._drawBody(ctx, yb)
+  }
 
+  // Sprite-first body draw at a given top Y (yb). Split out so the knocked-away
+  // transform can reuse the exact same sprite/placeholder logic.
+  _drawBody(ctx, yb) {
     // Sprite-first (GDD §XVI Step 4). drawImage stretches the art to the
     // collision rect (this.w × this.h). Tall obstacles (pintu, smartlock) are
     // authored at an AI-friendly ratio and stretched vertically here — their art

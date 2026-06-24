@@ -18,6 +18,7 @@ import {
 import { KASTA_BG } from '../theme.js'
 import { COLORS } from '../theme.js'
 import { FloatText } from '../entities/FloatText.js'
+import { Shard } from '../entities/Shard.js'
 import { Player } from '../entities/Player.js'
 import { SandalProjectile } from '../entities/SandalProjectile.js'
 import { INTENT } from '../core/Input.js'
@@ -200,6 +201,9 @@ export class PlayScene {
         this._onDashBreak(o)
         this.obs.splice(i, 1)
         continue
+      } else if (result === 'kopi-smash') {
+        // Don't splice — knockAway lets it fly; the offscreen check below drops it.
+        this._onKopiSmash(o)
       } else if (result === 'collision') {
         this._takeDamage()
       }
@@ -329,7 +333,7 @@ export class PlayScene {
     let bestDist = Infinity
     const rightEdge = this.player.x + this.player.w
     for (const o of this.obs) {
-      if (o.passed || o.nearMissed) continue
+      if (o.passed || o.nearMissed || o.knocked) continue
       if (claimed.has(o)) continue
       const d = o.x - rightEdge
       if (d > 0 && d < bestDist) {
@@ -359,6 +363,15 @@ export class PlayScene {
     const kasta = getKastaDef(this.dist)
     const { combo, mult } = this.combo.gainSmall(kasta)
     const S = this.game.scale
+    // Doors (mid) shatter and are removed; everything else gets knocked away
+    // ("mental") and left in the array to fly out (the offscreen check culls it).
+    if (obstacle.zone === 'mid') {
+      this._spawnShatter(obstacle)
+      const idx = this.obs.indexOf(obstacle)
+      if (idx >= 0) this.obs.splice(idx, 1)
+    } else {
+      obstacle.knockAway()
+    }
     this.game.floats.push(
       new FloatText(
         'SANDAL!',
@@ -442,6 +455,9 @@ export class PlayScene {
     const kasta = getKastaDef(this.dist)
     const { combo, mult } = this.combo.gain(kasta)
     const S = this.game.scale
+    // Shatter burst in the door's own colour so it visibly breaks apart instead
+    // of just vanishing (the splice that removes it happens in _updateObstacles).
+    this._spawnShatter(obstacle)
     this.game.floats.push(
       new FloatText(
         'CRASH!',
@@ -454,6 +470,38 @@ export class PlayScene {
     this.game.shake.trigger(8 * S, 0.25)
     this.game.freezeFor(0.06) // a smashed door lands harder than a graze
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult, source: 'dash-break' })
+  }
+
+  // Debris spray when a breakable (door) shatters. Centered on the obstacle,
+  // tinted to its fill, scaled to the frame. Pushed into floats so the main
+  // loop updates/renders/culls them with no extra plumbing.
+  _spawnShatter(obstacle) {
+    const cx = obstacle.x + obstacle.w / 2
+    const cy = obstacle.y + obstacle.h / 2
+    const color = obstacle.fill || COLORS.accent
+    const shards = Shard.burst(cx, cy, color, this.game.scale, 12)
+    for (const s of shards) this.game.floats.push(s)
+  }
+
+  // Kopi-boosted player rammed a non-door obstacle (GDD §VII). The obstacle is
+  // flung out ("mental") with VFX but grants NO combo — Kopi immunity must not
+  // become a passive combo farm (just hold Kopi and bulldoze everything). Near-
+  // miss and dash-break stay the only ways to build the multiplier.
+  _onKopiSmash(obstacle) {
+    obstacle.knockAway()
+    const S = this.game.scale
+    this.game.floats.push(
+      new FloatText(
+        'GASAK!',
+        obstacle.x + obstacle.w / 2,
+        obstacle.y,
+        COLORS.accent,
+        Math.round(28 * S)
+      )
+    )
+    this.game.shake.trigger(7 * S, 0.2)
+    this.game.freezeFor(0.04) // light punch, lighter than a dash-break
+    this.game.events?.emit(EVENTS.KOPI_SMASH, { id: obstacle.id })
   }
 
   _takeDamage() {

@@ -41,12 +41,12 @@ export class SandalProjectile {
   /**
    * Step the projectile. Returns:
    *   { hit: true,  obstacle } — sandal reached its target this frame; scene
-   *                              applies combo/VFX. Target is already removed
-   *                              from `obstacles` by this call.
+   *                              applies combo/VFX and decides removal vs.
+   *                              knock-away (door shatters, others get flung).
    *   { hit: false }            — sandal expired off-screen without impact
    *   null                      — still flying
    *
-   * `obstacles` is the scene's live array; mutated on impact.
+   * `obstacles` is the scene's live array; read (not mutated) to detect impact.
    */
   update(dt, game, obstacles) {
     this.x += this.speed * dt
@@ -54,12 +54,16 @@ export class SandalProjectile {
 
     if (this.target) {
       const idx = obstacles.indexOf(this.target)
-      if (idx >= 0) {
+      // Target already knocked away (e.g. a Kopi smash got it first) → treat as
+      // gone: keep flying and expire off the right edge, no double-hit.
+      if (this.target.knocked) {
+        this.target = null
+      } else if (idx >= 0) {
         const t = this.target
         // Impact the instant the sandal's nose crosses the target's left edge.
-        // Catches even fast-scrolling targets within a frame.
+        // Catches even fast-scrolling targets within a frame. The scene owns
+        // removal (door → shatter+remove; other → knock-away, stays in array).
         if (this.x + this.w / 2 >= t.x) {
-          obstacles.splice(idx, 1)
           this.dead = true
           return { hit: true, obstacle: t }
         }

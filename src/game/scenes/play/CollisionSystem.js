@@ -22,6 +22,8 @@ import { aabb } from '../../core/utils.js'
  * @param {number} nearMissDist  px gap (already scaled) that counts as "mepet"
  */
 export function testObstacle(obstacle, player, nearMissDist) {
+  // Knocked away by a Kopi smash — flying off, ignore for all collision/near-miss.
+  if (obstacle.knocked) return null
   // Already resolved in a previous frame?
   if (obstacle.passed || obstacle.nearMissed) {
     return maybeCollision(obstacle, player)
@@ -44,8 +46,18 @@ export function testObstacle(obstacle, player, nearMissDist) {
 
 function maybeCollision(obstacle, player) {
   if (player.snappingBack) return null
+  if (obstacle.knocked) return null // already flung out — never re-trigger
   if (!aabb(player.bounds, obstacle.bounds)) return null
   // Contact confirmed — decide what kind.
+  // Kopi Sachet boost (GDD §VII): immunity turns the pass-through DESTRUCTIVE
+  // instead of inert. A mid-zone door breaks like a dash-break (combo + CRASH);
+  // anything else gets knocked away ('kopi-smash', no combo). Checked BEFORE the
+  // plain-invincible early-return because Kopi sets invTimer too — otherwise the
+  // boost branch would be unreachable. Plain damage i-frames (invincible &&
+  // !boosting) still fall through to the inert pass-through below.
+  if (player.boosting) {
+    return obstacle.zone === 'mid' ? 'dash-break' : 'kopi-smash'
+  }
   if (player.invincible) return null
   // Dashing through a mid-zone obstacle (the door) BREAKS it instead of
   // damaging the player. The scene removes the obstacle on 'dash-break'.

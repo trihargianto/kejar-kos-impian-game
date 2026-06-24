@@ -35,6 +35,7 @@ export const EVENTS = Object.freeze({
   COLLECT_KOPI: 'collect:kopi',
   COLLECT_SANDAL: 'collect:sandal',
   SANDAL_THROW: 'sandal:throw',
+  KOPI_SMASH: 'kopi:smash', // boosted player flung a (non-door) obstacle away
   BOOST_START: 'boost:start',
   BOOST_END: 'boost:end',
   // UI

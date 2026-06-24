@@ -42,6 +42,7 @@ export const EVENTS = Object.freeze({
   HUD_TICK: 'hud:tick',
   // UI navigation handled by the React shell (settings is a React overlay).
   OPEN_SETTINGS: 'ui:open-settings',
+  OPEN_TUTORIAL: 'ui:open-tutorial', // replay the intro carousel from the menu
 })
 
 export class EventBus {

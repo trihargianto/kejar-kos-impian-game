@@ -35,6 +35,9 @@ export class StartScene {
         // Settings is a React overlay; the shell opens it. hasActiveRun=false
         // from the start screen, so no "restart" warning will apply.
         this.game.events?.emit(EVENTS.OPEN_SETTINGS, { hasActiveRun: false })
+      } else if (hit === 'tutorial') {
+        // Replay the intro tutorial carousel (also a React overlay).
+        this.game.events?.emit(EVENTS.OPEN_TUTORIAL)
       }
     }
   }
@@ -117,13 +120,6 @@ export class StartScene {
       ctx.font = `bold ${Math.round(15 * S)}px ${FONTS.mono}`
       ctx.fillText(`REKOR: ${formatScore(this.highScore)}m`, cx, floorY + Math.round(34 * S))
     }
-    ctx.fillStyle = COLORS.muted
-    ctx.font = `${Math.round(11 * S)}px ${FONTS.mono}`
-    ctx.fillText(
-      'JUMP · SLIDE · DASH · THROW di tombol kanan bawah',
-      cx,
-      floorY + Math.round(58 * S)
-    )
   }
 
   // Main menu: stacked buttons starting at top `yTop`. No scrim — it sits in
@@ -132,6 +128,7 @@ export class StartScene {
   _drawMenu(ctx, W, S, yTop) {
     const items = [
       { id: 'play', label: '▶ Main', primary: true },
+      { id: 'tutorial', label: '📖 Cara Main' },
       { id: 'settings', label: '⚙ Pengaturan' },
     ]
     const bw = Math.round(W * 0.6)

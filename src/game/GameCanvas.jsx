@@ -4,6 +4,8 @@ import { EVENTS } from './core/EventBus.js'
 import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
 import { ShareButtons } from './ShareButtons.jsx'
 import { SettingsPanel } from './SettingsPanel.jsx'
+import { TutorialOverlay } from './TutorialOverlay.jsx'
+import { seen, markSeen, TUTORIALS } from './systems/tutorial.js'
 
 // Control cluster: a 2×2 grid of equal buttons. The box size is derived so the
 // grid (two buttons + one gap each axis) fits exactly, with no leftover space.
@@ -29,6 +31,12 @@ export default function GameCanvas() {
   // Settings overlay: null = closed; { hasActiveRun } = open. Opened via the
   // OPEN_SETTINGS event (start screen) or the pause menu.
   const [settings, setSettings] = useState(null)
+  // Tutorial overlay: null = closed; { key, firstTime } = active card.
+  //   key       'intro' | 'kopi' | 'sandal'
+  //   firstTime true on the auto first-launch/first-pickup showing (label the
+  //             dismiss button "Saya mengerti, jangan tampilkan lagi"); false
+  //             when replayed from the menu (label it "Tutup" — nothing to set).
+  const [tutorial, setTutorial] = useState(null)
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
@@ -66,6 +74,14 @@ export default function GameCanvas() {
     // (in CSS px) is the only place buttons may live so they stay off the run.
     setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * cssH)
 
+    // First-pickup tutorial: pause the run + show the card the first time the
+    // player collects this power-up. Already-seen → no-op (game keeps running).
+    const maybeShowTutorial = (key) => {
+      if (seen(key)) return
+      game.setPaused(true)
+      setTutorial({ key, firstTime: true })
+    }
+
     // Drive the on-screen buttons off the same event bus gameplay already uses.
     const offs = [
       game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => setInPlay(scene === 'play')),
@@ -81,14 +97,26 @@ export default function GameCanvas() {
       game.events.on(EVENTS.OPEN_SETTINGS, ({ hasActiveRun = false } = {}) =>
         setSettings({ hasActiveRun })
       ),
+      // Replay the intro tutorial from the start menu (no pause — no run behind).
+      game.events.on(EVENTS.OPEN_TUTORIAL, () => setTutorial({ key: 'intro', firstTime: false })),
       game.events.on(EVENTS.GAME_START, () => setSandals(0)),
-      game.events.on(EVENTS.COLLECT_SANDAL, ({ ammo }) => setSandals(ammo)),
+      game.events.on(EVENTS.COLLECT_SANDAL, ({ ammo }) => {
+        setSandals(ammo)
+        maybeShowTutorial('sandal')
+      }),
+      game.events.on(EVENTS.COLLECT_KOPI, () => maybeShowTutorial('kopi')),
       game.events.on(EVENTS.PAUSE, ({ paused }) => setPaused(paused)),
       // Leaving play (death, retry) clears any lingering pause state.
       game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => {
         if (scene !== 'play') game.setPaused(false)
       }),
     ]
+
+    // Intro (first launch only): the Game constructor already entered the
+    // 'start' scene before these listeners were attached, so check directly
+    // rather than relying on the first SCENE_CHANGE. No pause needed — there's
+    // no run behind the start screen.
+    if (!seen('intro')) setTutorial({ key: 'intro', firstTime: true })
 
     // Dash cooldown is frame-continuous (no discrete event), so poll the player's
     // dashCd for the countdown shown over the button. setState only when the
@@ -205,6 +233,15 @@ export default function GameCanvas() {
     }
   }, [])
 
+  // Dismiss a tutorial card: mark it seen so it never shows again, close it,
+  // and (for the mid-run item cards) resume the frozen run. The intro shows on
+  // the start screen where nothing is paused, so resuming there is a no-op.
+  const dismissTutorial = useCallback((key) => {
+    markSeen(key)
+    setTutorial(null)
+    if (key === 'kopi' || key === 'sandal') gameRef.current?.setPaused(false)
+  }, [])
+
   const handleTap = useCallback((e) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -258,6 +295,17 @@ export default function GameCanvas() {
           hasActiveRun={settings.hasActiveRun}
           applyAudio={applyAudio}
           onClose={closeSettings}
+        />
+      )}
+
+      {/* Tutorial overlay — intro (first launch) + first-pickup item cards.
+          Sits above Settings/pause (z-index 35); item cards open over a frozen
+          run and resume it on dismiss. */}
+      {tutorial && (
+        <TutorialOverlay
+          data={TUTORIALS[tutorial.key]}
+          firstTime={tutorial.firstTime}
+          onDismiss={() => dismissTutorial(tutorial.key)}
         />
       )}
 

@@ -139,7 +139,7 @@ export class Input {
 export const INTENT = {
   jump: ['ArrowUp', 'KeyW', 'Button:Jump'], // Space moved to throw
   slide: ['ArrowDown', 'KeyS', 'Button:Slide'],
-  dash: ['ShiftLeft', 'ShiftRight', 'ArrowRight', 'Button:Dash'],
+  dash: ['KeyD', 'ArrowRight', 'Button:Dash'],
   throw: ['Space', 'KeyQ', 'Button:Throw'], // Sandal Jepit (active power-up)
   confirm: ['Enter', 'Tap', 'ArrowUp'], // Space is throw, so it's no longer confirm
 }

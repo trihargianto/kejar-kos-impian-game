@@ -141,6 +141,7 @@ function ShareBtn({ children, onPress, disabled, primary }) {
   return (
     <button
       type="button"
+      className="game-btn"
       disabled={disabled}
       onPointerDown={onPress}
       style={{

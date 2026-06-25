@@ -39,3 +39,32 @@ body,
     transform: scale(1.05);
   }
 }
+
+/* Interactive feedback for game buttons. Press-scale gives every device a
+   tactile "it registered" cue (the inline-styled buttons had none); hover lift
+   is gated to fine pointers so touch devices don't get a sticky hover state. */
+.game-btn {
+  transition:
+    transform 0.07s ease-out,
+    filter 0.12s ease-out,
+    background 0.12s ease-out;
+}
+.game-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+@media (hover: hover) and (pointer: fine) {
+  .game-btn:hover:not(:disabled) {
+    filter: brightness(1.25);
+  }
+  /* Keep the cluster's bottom-right scale origin while adding the press cue. */
+  .game-btn-menu:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+}
+.game-btn,
+.game-btn-menu {
+  cursor: pointer;
+}
+.game-btn:disabled {
+  cursor: default;
+}

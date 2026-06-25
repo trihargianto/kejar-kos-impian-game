@@ -74,7 +74,7 @@ function TutorialCard({ media, title, body, footer, dismissLabel, onDismiss }) {
         ))}
       </div>
       {footer ?? (
-        <button type="button" onPointerDown={onDismiss} style={dismissStyle}>
+        <button type="button" className="game-btn" onPointerDown={onDismiss} style={dismissStyle}>
           {dismissLabel}
         </button>
       )}
@@ -117,18 +117,18 @@ function TutorialCarousel({ slides, dismissLabel, onDismiss, playMenuTap }) {
   const primaryStyle = { ...dismissStyle, flex: 1, marginTop: 0 }
   const primary =
     i < last ? (
-      <button type="button" onPointerDown={() => go(i + 1)} style={primaryStyle}>
+      <button type="button" className="game-btn" onPointerDown={() => go(i + 1)} style={primaryStyle}>
         Lanjut →
       </button>
     ) : (
-      <button type="button" onPointerDown={onDismiss} style={primaryStyle}>
+      <button type="button" className="game-btn" onPointerDown={onDismiss} style={primaryStyle}>
         {dismissLabel}
       </button>
     )
   const footer = (
     <div style={footerRowStyle}>
       {i > 0 && (
-        <button type="button" onPointerDown={() => go(i - 1)} style={backStyle}>
+        <button type="button" className="game-btn" onPointerDown={() => go(i - 1)} style={backStyle}>
           ← Sebelumnya
         </button>
       )}
@@ -148,6 +148,7 @@ function TutorialCarousel({ slides, dismissLabel, onDismiss, playMenuTap }) {
           <button
             key={d}
             type="button"
+            className="game-btn"
             aria-label={`Slide ${d + 1}`}
             onPointerDown={() => go(d)}
             style={dotStyle(d === i)}
@@ -155,7 +156,7 @@ function TutorialCarousel({ slides, dismissLabel, onDismiss, playMenuTap }) {
         ))}
       </div>
       {i < last && (
-        <button type="button" onPointerDown={() => { playMenuTap?.(); onDismiss() }} style={skipStyle}>
+        <button type="button" className="game-btn" onPointerDown={() => { playMenuTap?.(); onDismiss() }} style={skipStyle}>
           Lewati
         </button>
       )}

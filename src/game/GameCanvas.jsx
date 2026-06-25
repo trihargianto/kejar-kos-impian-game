@@ -13,10 +13,37 @@ const BTN_SIZE = 86
 const GRID_GAP = 16
 const CLUSTER_SIZE = BTN_SIZE * 2 + GRID_GAP // 188
 
+// Keyboard hint shown on each verb button on desktop, so mouse users discover
+// they can (and should) play with the keyboard. Matches the INTENT bindings in
+// core/Input.js — the shortest/most intuitive key per verb.
+const KEY_HINT = {
+  jump: '↑ / W',
+  dash: '→ / D',
+  slide: '↓ / S',
+  throw: 'Space',
+}
+
+// Desktop = a fine pointer (mouse/trackpad). Touch devices report 'coarse'. We
+// key the desktop UX off input capability, not screen size, so a small desktop
+// window or a large tablet is classified by how the player actually interacts.
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: fine)')
+    const onChange = (e) => setDesktop(e.matches)
+    mq.addEventListener?.('change', onChange)
+    return () => mq.removeEventListener?.('change', onChange)
+  }, [])
+  return desktop
+}
+
 export default function GameCanvas() {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   const gameRef = useRef(null)
+  const enterGameRef = useRef(null)
   const [ripples, setRipples] = useState([])
   const rippleId = useRef(0)
   // Action buttons only matter during play; throw also needs ammo, dash a cooldown.
@@ -47,6 +74,34 @@ export default function GameCanvas() {
   //             "Tap untuk masuk" prompt replaces the progress bar.
   //   entered — the player tapped; the splash lifts and the game is revealed.
   const [loading, setLoading] = useState({ loaded: 0, total: 0, ready: false, entered: false })
+  const isDesktop = useIsDesktop()
+
+  // Keyboard dismiss for the splash: once assets are ready, any key enters the
+  // game (the keypress is also the audio-unlock gesture). Captured here so it
+  // doesn't fall through to the game loop's Input and skip the home screen.
+  useEffect(() => {
+    if (loading.entered || !loading.ready) return
+    const onKey = (e) => {
+      e.preventDefault()
+      enterGameRef.current?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [loading.entered, loading.ready])
+
+  // Esc toggles pause during play (desktop convention). Skipped while a React
+  // overlay (Settings/Tutorial) is open — those own Esc / their own close — so
+  // Esc there doesn't pause the run behind them.
+  useEffect(() => {
+    if (!inPlay || settings || tutorial) return
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      gameRef.current?.togglePause()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [inPlay, settings, tutorial])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -212,52 +267,67 @@ export default function GameCanvas() {
     gameRef.current?.audio?._playSample('sfx:menu_tap', 0.8)
   }, [])
 
-  const togglePause = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    playMenuTap()
-    gameRef.current?.togglePause()
-  }, [playMenuTap])
+  const togglePause = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      gameRef.current?.togglePause()
+    },
+    [playMenuTap]
+  )
 
   // Pause menu actions.
-  const resumeGame = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    playMenuTap()
-    gameRef.current?.setPaused(false)
-  }, [playMenuTap])
+  const resumeGame = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      gameRef.current?.setPaused(false)
+    },
+    [playMenuTap]
+  )
 
-  const openSettingsFromPause = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    playMenuTap()
-    // Open Settings as an overlay ON TOP of the frozen run. The run stays paused
-    // behind it; Save with no difficulty change (or Cancel) resumes it intact.
-    setSettings({ hasActiveRun: true })
-  }, [playMenuTap])
+  const openSettingsFromPause = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      // Open Settings as an overlay ON TOP of the frozen run. The run stays paused
+      // behind it; Save with no difficulty change (or Cancel) resumes it intact.
+      setSettings({ hasActiveRun: true })
+    },
+    [playMenuTap]
+  )
 
-  const openTutorialFromPause = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    playMenuTap()
-    // Replay the intro carousel ON TOP of the frozen run (z-index 35 > pause's
-    // 10). firstTime:false → the dismiss button reads "Tutup" and sets no flag;
-    // closing it returns to the still-paused pause menu underneath.
-    setTutorial({ key: 'intro', firstTime: false })
-  }, [playMenuTap])
+  const openTutorialFromPause = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      // Replay the intro carousel ON TOP of the frozen run (z-index 35 > pause's
+      // 10). firstTime:false → the dismiss button reads "Tutup" and sets no flag;
+      // closing it returns to the still-paused pause menu underneath.
+      setTutorial({ key: 'intro', firstTime: false })
+    },
+    [playMenuTap]
+  )
 
-  const exitToHome = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const game = gameRef.current
-    if (!game) return
-    // Quitting mid-run discards the current progress — confirm first.
-    const ok = window.confirm('Keluar sekarang? Progres permainan ini akan hilang.')
-    if (!ok) return
-    playMenuTap()
-    game.setPaused(false)
-    game.go('start')
-  }, [playMenuTap])
+  const exitToHome = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const game = gameRef.current
+      if (!game) return
+      // Quitting mid-run discards the current progress — confirm first.
+      const ok = window.confirm('Keluar sekarang? Progres permainan ini akan hilang.')
+      if (!ok) return
+      playMenuTap()
+      game.setPaused(false)
+      game.go('start')
+    },
+    [playMenuTap]
+  )
 
   // Apply the saved SFX on/off state to the live AudioSystem. Passed as a
   // callback so SettingsPanel never touches the game ref during render.
@@ -287,15 +357,27 @@ export default function GameCanvas() {
     if (key === 'kopi' || key === 'sandal') gameRef.current?.setPaused(false)
   }, [])
 
-  // Enter from the splash. This tap is the user gesture browsers require before
-  // any audio, so unlock the context + kick the home music here — the game is
-  // revealed already "sounded", with no silent-then-pops start.
+  // Enter from the splash. This tap/keypress is the user gesture browsers
+  // require before any audio, so unlock the context + kick the home music here —
+  // the game is revealed already "sounded", with no silent-then-pops start.
+  //
+  // Crucially, drop any input edges buffered while the splash was up: the game
+  // loop runs behind the splash (scene 'start'), so a Space/↑/Enter pressed to
+  // dismiss the splash would otherwise leak into StartScene next frame and shoot
+  // straight past the home screen into play. Flushing lands the player on the
+  // home screen, as expected.
   const enterGame = useCallback(() => {
-    const audio = gameRef.current?.audio
-    audio?.unlock()
-    audio?.startHomeMusic()
+    const game = gameRef.current
+    game?.audio?.unlock()
+    game?.audio?.startHomeMusic()
+    game?.input?.flush()
     setLoading((l) => ({ ...l, entered: true }))
   }, [])
+  // Keep a ref so the splash keydown effect (declared earlier) calls the latest
+  // enterGame without re-subscribing the listener on every render.
+  useEffect(() => {
+    enterGameRef.current = enterGame
+  }, [enterGame])
 
   const handleTap = useCallback((e) => {
     // First gesture unlocks the Web Audio context (suspended until then), so the
@@ -319,10 +401,7 @@ export default function GameCanvas() {
       onTouchStart={handleTap}
       onClick={handleTap}
     >
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'block', width: '100%', height: '100%' }}
-      />
+      <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
 
       {/* Boot loading overlay — covers the canvas until every image + SFX is
           cached, so the start screen lifts straight to its real art with no
@@ -391,7 +470,7 @@ export default function GameCanvas() {
                 animation: 'tapPulse 1.4s ease-in-out infinite',
               }}
             >
-              Tap untuk masuk
+              {isDesktop ? 'Klik untuk masuk' : 'Tap untuk masuk'}
             </div>
           ) : (
             <>
@@ -475,7 +554,9 @@ export default function GameCanvas() {
       {inPlay && (
         <button
           type="button"
+          className="game-btn"
           aria-label={paused ? 'Resume' : 'Pause'}
+          title={isDesktop ? (paused ? 'Resume (Esc)' : 'Pause (Esc)') : undefined}
           onPointerDown={togglePause}
           style={{
             position: 'absolute',
@@ -491,15 +572,22 @@ export default function GameCanvas() {
             fontSize: 18,
             lineHeight: 1,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: 1,
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTapHighlightColor: 'transparent',
             touchAction: 'none',
           }}
         >
-          {paused ? '▶' : '❚❚'}
+          <span>{paused ? '▶' : '❚❚'}</span>
+          {isDesktop && (
+            <span style={{ fontSize: 8, fontWeight: 'bold', opacity: 0.75, letterSpacing: 0.5 }}>
+              ESC
+            </span>
+          )}
         </button>
       )}
 
@@ -522,7 +610,9 @@ export default function GameCanvas() {
             touchAction: 'none',
           }}
         >
-          <div style={{ fontSize: 30, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 6 }}>
+          <div
+            style={{ fontSize: 30, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 6 }}
+          >
             JEDA
           </div>
           <MenuButton label="▶ Resume" primary onPress={resumeGame} />
@@ -554,10 +644,13 @@ export default function GameCanvas() {
             pointerEvents: 'none',
           }}
         >
-          {/* Grid order: row 1 = THROW, DASH · row 2 = SLIDE, JUMP. */}
+          {/* Grid order: row 1 = THROW, DASH · row 2 = SLIDE, JUMP. On desktop
+              each button shows its keyboard shortcut so mouse users discover the
+              keyboard controls. */}
           <ActionButton
             label="THROW"
             sub={sandals > 0 ? `×${sandals}` : null}
+            keyHint={isDesktop ? KEY_HINT.throw : null}
             disabled={sandals <= 0}
             size={BTN_SIZE}
             onPress={(e) => pressAction('Button:Throw', e)}
@@ -566,18 +659,21 @@ export default function GameCanvas() {
             label="DASH"
             size={BTN_SIZE}
             cooldown={dashCd}
+            keyHint={isDesktop ? KEY_HINT.dash : null}
             onPress={(e) => pressAction('Button:Dash', e)}
           />
           <ActionButton
             label="SLIDE"
             size={BTN_SIZE}
             hold
+            keyHint={isDesktop ? KEY_HINT.slide : null}
             onPress={(e) => holdAction('Button:Slide', e)}
             onRelease={(e) => releaseAction('Button:Slide', e)}
           />
           <ActionButton
             label="JUMP"
             size={BTN_SIZE}
+            keyHint={isDesktop ? KEY_HINT.jump : null}
             onPress={(e) => pressAction('Button:Jump', e)}
           />
         </div>
@@ -595,7 +691,17 @@ export default function GameCanvas() {
 //               but STILL PRESSABLE. The press is harmlessly ignored by gameplay
 //               (Player rejects a dash on cooldown), so the button is never a
 //               dead zone — fixing the "can't press DASH" stuck state.
-function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress, hold, onRelease }) {
+function ActionButton({
+  label,
+  sub,
+  keyHint,
+  disabled,
+  cooldown = 0,
+  size = 76,
+  onPress,
+  hold,
+  onRelease,
+}) {
   const cooling = cooldown > 0
   const dim = disabled || cooling
   // A held button must release on up AND on the pointer leaving/cancelling, or a
@@ -604,6 +710,7 @@ function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress, 
   return (
     <button
       type="button"
+      className="game-btn"
       disabled={disabled}
       onPointerDown={disabled ? undefined : onPress}
       onPointerUp={release}
@@ -639,6 +746,25 @@ function ActionButton({ label, sub, disabled, cooldown = 0, size = 76, onPress, 
       ) : (
         sub && <span style={{ fontSize: 12, opacity: 0.85 }}>{sub}</span>
       )}
+      {keyHint && !cooling && (
+        // Desktop keyboard shortcut. Pill so it reads as a key cap, distinct
+        // from the verb label above it.
+        <span
+          style={{
+            marginTop: 3,
+            fontSize: Math.round(size * 0.12),
+            fontWeight: 'bold',
+            lineHeight: 1,
+            padding: '2px 5px',
+            borderRadius: 5,
+            background: 'rgba(255,255,255,0.16)',
+            color: dim ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.92)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {keyHint}
+        </span>
+      )}
     </button>
   )
 }
@@ -649,6 +775,7 @@ function MenuButton({ label, primary, onPress }) {
   return (
     <button
       type="button"
+      className="game-btn game-btn-menu"
       onPointerDown={onPress}
       style={{
         width: 220,

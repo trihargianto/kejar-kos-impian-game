@@ -65,7 +65,7 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose, playMenuTap }
 
       {/* SFX toggle */}
       <Row label="Suara (SFX)">
-        <button type="button" onPointerDown={() => { playMenuTap?.(); setSfx((v) => !v) }} style={pillStyle(sfx)}>
+        <button type="button" className="game-btn" onPointerDown={() => { playMenuTap?.(); setSfx((v) => !v) }} style={pillStyle(sfx)}>
           {sfx ? 'ON' : 'OFF'}
         </button>
       </Row>
@@ -77,6 +77,7 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose, playMenuTap }
             <button
               key={key}
               type="button"
+              className="game-btn"
               onPointerDown={() => { playMenuTap?.(); setDifficulty(key) }}
               style={segStyle(difficulty === key)}
             >
@@ -93,10 +94,10 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose, playMenuTap }
       )}
 
       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-        <button type="button" onPointerDown={onCancel} style={btnStyle(false)}>
+        <button type="button" className="game-btn" onPointerDown={onCancel} style={btnStyle(false)}>
           Kembali
         </button>
-        <button type="button" onPointerDown={onSave} style={btnStyle(true)}>
+        <button type="button" className="game-btn" onPointerDown={onSave} style={btnStyle(true)}>
           Simpan
         </button>
       </div>

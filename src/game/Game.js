@@ -30,7 +30,7 @@ export class Game {
     // automatically once it lands (GDD §XVI Step 4 — non-blocking swap).
     this.assets.load(MANIFEST)
     // SFX subscribes to the event bus; placeholder WebAudio synth until Step 4.
-    this.audio = new AudioSystem(this.events)
+    this.audio = new AudioSystem(this.events, this.assets)
     this.floats = []
     this.lastDist = 0
     this.lastCoins = 0

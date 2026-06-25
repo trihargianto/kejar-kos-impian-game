@@ -39,5 +39,19 @@ export const MANIFEST = {
     // UI
     'ui:logo': 'sprites/ui_logo.png',
   },
-  audio: {},
+  audio: {
+    'sfx:menu_tap': 'audio/sfx_menu_tap.mp3',
+    'sfx:jump': 'audio/sfx_jump.mp3',
+    'sfx:crash': 'audio/sfx_crash.mp3',
+    'sfx:punch': 'audio/sfx_punch.mp3',
+    'sfx:hit': 'audio/sfx_hit.mp3',
+    'sfx:coin': 'audio/sfx_coin.mp3',
+    'sfx:dash': 'audio/sfx_dash.mp3',
+    'sfx:slide': 'audio/sfx_slide.mp3',
+    'sfx:kopi_1': 'audio/sfx_kopi_1.mp3',
+    'sfx:kopi_2': 'audio/sfx_kopi_2.mp3',
+    'sfx:kopi_3': 'audio/sfx_kopi_3.mp3',
+    'sfx:kopi_4': 'audio/sfx_kopi_4.mp3',
+    'music:home': 'audio/music_home.mp3',
+  },
 }

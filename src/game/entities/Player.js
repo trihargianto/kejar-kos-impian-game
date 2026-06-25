@@ -250,6 +250,7 @@ function snapBackState() {
 function applyGravity(dt, p) {
   const gravity = GRAVITY * p.S
   const floorTop = p.floorY - p.height
+  const wasAirborne = !p.grounded
   p.vy += gravity * dt
   p.y += p.vy * dt
   if (p.y >= floorTop) {
@@ -257,6 +258,7 @@ function applyGravity(dt, p) {
     p.vy = 0
     p.grounded = true
     p.jumps = 2
+    if (wasAirborne) p._emit('land')
   } else {
     p.grounded = false
   }

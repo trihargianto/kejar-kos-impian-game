@@ -3,6 +3,7 @@ import { COLORS, FONTS, ctaPulse } from '../theme.js'
 import { INTENT } from '../core/Input.js'
 import { getRank, formatScore } from '../systems/score.js'
 import { submitScore } from '../systems/storage.js'
+import { EVENTS } from '../core/EventBus.js'
 import {
   matchDreamKos,
   matchWithFacility,
@@ -31,6 +32,9 @@ export class GameOverScene {
     // High-score persists SCORE (jarak × combo), not distance (GDD §IV).
     this.highScore = submitScore(this.score)
     this.isNewRecord = this.score >= this.highScore && this.score > 0
+    if (this.isNewRecord) {
+      this.game.events?.emit(EVENTS.GAME_OVER, { isNewRecord: true, score: this.score })
+    }
   }
 
   // Re-run the matcher for either the default reveal (no chip) or a chip filter.
@@ -61,6 +65,7 @@ export class GameOverScene {
       if (pos && this._chipAt(pos.x, pos.y)) {
         const hit = this._chipAt(pos.x, pos.y)
         this._reroll(hit.id)
+        this.game.events?.emit(EVENTS.CHIP_TAP, { id: hit.id })
         return
       }
       this.game.go('play')

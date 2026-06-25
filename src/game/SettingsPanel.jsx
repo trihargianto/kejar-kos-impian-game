@@ -15,7 +15,7 @@ import {
 //   hasActiveRun     true when opened from the pause menu (a run is frozen behind)
 //   applyAudio(sfx)  push the saved SFX on/off state to the live AudioSystem
 //   onClose(restart) close the panel; restart=true → caller restarts the run
-export function SettingsPanel({ hasActiveRun, applyAudio, onClose }) {
+export function SettingsPanel({ hasActiveRun, applyAudio, onClose, playMenuTap }) {
   const saved = loadSettings()
   const [sfx, setSfx] = useState(saved.sfx)
   const [difficulty, setDifficulty] = useState(saved.difficulty)
@@ -23,6 +23,7 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose }) {
   const dirtyDifficulty = difficulty !== saved.difficulty
 
   const onSave = useCallback(() => {
+    playMenuTap?.()
     // Difficulty change mid-run restarts the run — confirm before discarding it.
     let restart = false
     if (dirtyDifficulty && hasActiveRun) {
@@ -35,9 +36,12 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose }) {
     saveSettings({ sfx, difficulty })
     applyAudio?.(sfx)
     onClose(restart)
-  }, [dirtyDifficulty, hasActiveRun, sfx, difficulty, applyAudio, onClose])
+  }, [dirtyDifficulty, hasActiveRun, sfx, difficulty, applyAudio, onClose, playMenuTap])
 
-  const onCancel = useCallback(() => onClose(false), [onClose])
+  const onCancel = useCallback(() => {
+    playMenuTap?.()
+    onClose(false)
+  }, [onClose, playMenuTap])
 
   return (
     <div
@@ -61,7 +65,7 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose }) {
 
       {/* SFX toggle */}
       <Row label="Suara (SFX)">
-        <button type="button" onPointerDown={() => setSfx((v) => !v)} style={pillStyle(sfx)}>
+        <button type="button" onPointerDown={() => { playMenuTap?.(); setSfx((v) => !v) }} style={pillStyle(sfx)}>
           {sfx ? 'ON' : 'OFF'}
         </button>
       </Row>
@@ -73,7 +77,7 @@ export function SettingsPanel({ hasActiveRun, applyAudio, onClose }) {
             <button
               key={key}
               type="button"
-              onPointerDown={() => setDifficulty(key)}
+              onPointerDown={() => { playMenuTap?.(); setDifficulty(key) }}
               style={segStyle(difficulty === key)}
             >
               {DIFFICULTY_PRESETS[key].label}

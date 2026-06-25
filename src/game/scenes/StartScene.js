@@ -30,6 +30,7 @@ export class StartScene {
     // The menu is tap/click-driven: Play Game / Settings / Exit.
     if (input.justPressed('Tap') && input.tapPos) {
       const hit = this._menuHit(input.tapPos.x, input.tapPos.y)
+      if (hit) this.game.events?.emit(EVENTS.MENU_TAP, { id: hit })
       if (hit === 'play') this.game.go('play')
       else if (hit === 'settings') {
         // Settings is a React overlay; the shell opens it. hasActiveRun=false

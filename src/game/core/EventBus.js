@@ -15,6 +15,7 @@ export const EVENTS = Object.freeze({
   PAUSE: 'game:pause',
   // Player
   PLAYER_JUMP: 'player:jump',
+  PLAYER_LAND: 'player:land',
   PLAYER_SLIDE: 'player:slide',
   PLAYER_DASH: 'player:dash',
   PLAYER_HIT: 'player:hit',
@@ -35,11 +36,15 @@ export const EVENTS = Object.freeze({
   COLLECT_KOPI: 'collect:kopi',
   COLLECT_SANDAL: 'collect:sandal',
   SANDAL_THROW: 'sandal:throw',
+  DOOR_BREAK: 'obstacle:door-break',
+  SANDAL_EMPTY: 'sandal:empty', // player pressed throw but ammo = 0
   KOPI_SMASH: 'kopi:smash', // boosted player flung a (non-door) obstacle away
   BOOST_START: 'boost:start',
   BOOST_END: 'boost:end',
   // UI
   HUD_TICK: 'hud:tick',
+  MENU_TAP: 'ui:menu-tap',   // start-screen button tapped
+  CHIP_TAP: 'ui:chip-tap',   // game-over facility chip tapped
   // UI navigation handled by the React shell (settings is a React overlay).
   OPEN_SETTINGS: 'ui:open-settings',
   OPEN_TUTORIAL: 'ui:open-tutorial', // replay the intro carousel from the menu

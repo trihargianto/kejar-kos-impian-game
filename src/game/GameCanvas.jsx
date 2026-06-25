@@ -184,26 +184,33 @@ export default function GameCanvas() {
     gameRef.current?.input.releaseVirtual(code)
   }, [])
 
+  const playMenuTap = useCallback(() => {
+    gameRef.current?.audio?._playSample('sfx:menu_tap', 0.8)
+  }, [])
+
   const togglePause = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
+    playMenuTap()
     gameRef.current?.togglePause()
-  }, [])
+  }, [playMenuTap])
 
   // Pause menu actions.
   const resumeGame = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
+    playMenuTap()
     gameRef.current?.setPaused(false)
-  }, [])
+  }, [playMenuTap])
 
   const openSettingsFromPause = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
+    playMenuTap()
     // Open Settings as an overlay ON TOP of the frozen run. The run stays paused
     // behind it; Save with no difficulty change (or Cancel) resumes it intact.
     setSettings({ hasActiveRun: true })
-  }, [])
+  }, [playMenuTap])
 
   const exitToHome = useCallback((e) => {
     e.preventDefault()
@@ -213,9 +220,10 @@ export default function GameCanvas() {
     // Quitting mid-run discards the current progress — confirm first.
     const ok = window.confirm('Keluar sekarang? Progres permainan ini akan hilang.')
     if (!ok) return
+    playMenuTap()
     game.setPaused(false)
     game.go('start')
-  }, [])
+  }, [playMenuTap])
 
   // Apply the saved SFX on/off state to the live AudioSystem. Passed as a
   // callback so SettingsPanel never touches the game ref during render.
@@ -298,6 +306,7 @@ export default function GameCanvas() {
           hasActiveRun={settings.hasActiveRun}
           applyAudio={applyAudio}
           onClose={closeSettings}
+          playMenuTap={playMenuTap}
         />
       )}
 
@@ -309,6 +318,7 @@ export default function GameCanvas() {
           data={TUTORIALS[tutorial.key]}
           firstTime={tutorial.firstTime}
           onDismiss={() => dismissTutorial(tutorial.key)}
+          playMenuTap={playMenuTap}
         />
       )}
 

@@ -17,14 +17,15 @@ const SWIPE_THRESHOLD = 40 // px horizontal travel to flip a slide
 // button reads "Saya mengerti, jangan tampilkan lagi" (it sets the seen flag).
 // false → replayed from the menu; the flag is already set, so the button just
 // reads "Tutup".
-export function TutorialOverlay({ data, firstTime = true, onDismiss }) {
+export function TutorialOverlay({ data, firstTime = true, onDismiss, playMenuTap }) {
   const dismissLabel = firstTime ? 'Saya mengerti, jangan tampilkan lagi' : 'Tutup'
+  const onDismissWithSfx = useCallback(() => { playMenuTap?.(); onDismiss() }, [onDismiss, playMenuTap])
   return (
     <div style={scrimStyle}>
       {data.type === 'carousel' ? (
-        <TutorialCarousel slides={data.slides} dismissLabel={dismissLabel} onDismiss={onDismiss} />
+        <TutorialCarousel slides={data.slides} dismissLabel={dismissLabel} onDismiss={onDismissWithSfx} playMenuTap={playMenuTap} />
       ) : (
-        <TutorialCard {...data} dismissLabel={dismissLabel} onDismiss={onDismiss} />
+        <TutorialCard {...data} dismissLabel={dismissLabel} onDismiss={onDismissWithSfx} />
       )}
     </div>
   )
@@ -84,14 +85,14 @@ function TutorialCard({ media, title, body, footer, dismissLabel, onDismiss }) {
 // Swipeable multi-slide intro. Horizontal pointer drag flips slides; dots show
 // position. The dismiss CTA only appears on the last slide (earlier slides show
 // "Lanjut →"), so the player is walked through the whole intro before exiting.
-function TutorialCarousel({ slides, dismissLabel, onDismiss }) {
+function TutorialCarousel({ slides, dismissLabel, onDismiss, playMenuTap }) {
   const [i, setI] = useState(0)
   const startX = useRef(null)
   const last = slides.length - 1
 
   const go = useCallback(
-    (next) => setI((cur) => Math.max(0, Math.min(last, next ?? cur))),
-    [last]
+    (next) => { playMenuTap?.(); setI((cur) => Math.max(0, Math.min(last, next ?? cur))) },
+    [last, playMenuTap]
   )
 
   const onPointerDown = useCallback((e) => {
@@ -140,7 +141,7 @@ function TutorialCarousel({ slides, dismissLabel, onDismiss }) {
         ))}
       </div>
       {i < last && (
-        <button type="button" onPointerDown={onDismiss} style={skipStyle}>
+        <button type="button" onPointerDown={() => { playMenuTap?.(); onDismiss() }} style={skipStyle}>
           Lewati
         </button>
       )}

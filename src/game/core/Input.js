@@ -28,9 +28,16 @@ export class Input {
       this._justPressed.Tap = true
     }
 
+    this._onMouseDown = (e) => {
+      const rect = this._canvas.getBoundingClientRect()
+      this._tapPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      this._justPressed.Tap = true
+    }
+
     window.addEventListener('keydown', this._onKeyDown)
     window.addEventListener('keyup', this._onKeyUp)
     canvas.addEventListener('touchstart', this._onTouchStart, { passive: false })
+    canvas.addEventListener('mousedown', this._onMouseDown)
 
     this._canvas = canvas
   }
@@ -91,6 +98,7 @@ export class Input {
     window.removeEventListener('keydown', this._onKeyDown)
     window.removeEventListener('keyup', this._onKeyUp)
     this._canvas.removeEventListener('touchstart', this._onTouchStart)
+    this._canvas.removeEventListener('mousedown', this._onMouseDown)
   }
 }
 

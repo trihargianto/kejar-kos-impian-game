@@ -44,7 +44,17 @@ export class PlayScene {
     // Wire player → event bus so jump/slide/dash can drive audio + analytics
     // without the scene shuttling each call manually.
     this.player._emit = (kind) => {
-      const map = { jump: EVENTS.PLAYER_JUMP, slide: EVENTS.PLAYER_SLIDE, dash: EVENTS.PLAYER_DASH }
+      const map = {
+        jump: EVENTS.PLAYER_JUMP,
+        land: EVENTS.PLAYER_LAND,
+        slide: EVENTS.PLAYER_SLIDE,
+        dash: EVENTS.PLAYER_DASH,
+      }
+      if (kind === 'jump') {
+        // jumps was already decremented before _emit — if 0 left it was the double jump.
+        this.game.events?.emit(EVENTS.PLAYER_JUMP, { double: this.player.jumps === 0 })
+        return
+      }
       if (map[kind]) this.game.events?.emit(map[kind])
     }
 
@@ -115,7 +125,11 @@ export class PlayScene {
     this._updateSpeed()
     this._updateDistance(dt)
     this._handleInput()
+    const wasBoosting = this.player.boosting
     this.player.update(dt)
+    if (wasBoosting && !this.player.boosting) {
+      this.game.events?.emit(EVENTS.BOOST_END)
+    }
     this._updateSpawning(dt)
     this._updateObstacles(dt)
     this._updateCollectibles(dt)
@@ -229,12 +243,13 @@ export class PlayScene {
     if (coins > 0) {
       this.coins += coins
       const kasta = getKastaDef(this.dist)
-      this.combo.gain(kasta) // greed pays into the combo loop
+      const { combo, mult } = this.combo.gain(kasta) // greed pays into the combo loop
       const p = this.player
       this.game.floats.push(
         new FloatText(`+${coins}`, p.x + p.w / 2, p.y - 50 * S, COLORS.gold, Math.round(20 * S))
       )
       this.game.events?.emit(EVENTS.COLLECT_COIN, { coins, total: this.coins })
+      this.game.events?.emit(EVENTS.COMBO_GAIN, { combo, mult })
     }
 
     if (hearts > 0) {
@@ -305,7 +320,10 @@ export class PlayScene {
   // shake, float, obstacle destroy) is applied when the projectile lands in
   // _onSandalImpact, NOT here — that way the player sees the throw travel.
   _throwSandal() {
-    if (!this.player.consumeSandal()) return
+    if (!this.player.consumeSandal()) {
+      this.game.events?.emit(EVENTS.SANDAL_EMPTY)
+      return
+    }
 
     // Obstacles already claimed by an in-flight sandal are skipped, otherwise
     // two quick throws would both lock onto the same nearest obstacle and the
@@ -369,6 +387,7 @@ export class PlayScene {
       this._spawnShatter(obstacle)
       const idx = this.obs.indexOf(obstacle)
       if (idx >= 0) this.obs.splice(idx, 1)
+      this.game.events?.emit(EVENTS.DOOR_BREAK)
     } else {
       obstacle.knockAway()
     }
@@ -447,6 +466,7 @@ export class PlayScene {
     this.game.shake.trigger(5 * S, 0.18)
     this.game.freezeFor(0.05) // hit-stop so "Nyaris!" punches (GDD §XIII)
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult })
+    this.game.events?.emit(EVENTS.COMBO_GAIN, { combo, mult })
   }
 
   // Player dashed through a mid-zone door — the door breaks. Rewarded as a
@@ -469,6 +489,7 @@ export class PlayScene {
     )
     this.game.shake.trigger(8 * S, 0.25)
     this.game.freezeFor(0.06) // a smashed door lands harder than a graze
+    this.game.events?.emit(EVENTS.DOOR_BREAK)
     this.game.events?.emit(EVENTS.NEAR_MISS, { combo, mult, source: 'dash-break' })
   }
 

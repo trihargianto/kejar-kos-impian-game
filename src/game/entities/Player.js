@@ -37,6 +37,12 @@ import { StateMachine } from '../core/State.js'
 
 const DASH_RIGHT_MARGIN = 20
 const SNAP_BACK_TIME = 0.22
+// Brief collision grace right after snap-back returns the player to home X. The
+// dash flings them right (collision is off via snappingBack), but on the frame
+// they snap back home an obstacle they overtook can be sitting on home X and hit
+// instantly. This tail keeps them safe just long enough to clear it. Distinct
+// from the hit i-frame (invTimer): no blink, and near-miss still fires.
+const DASH_GRACE_TIME = 0.15
 
 // ─── Player state definitions ────────────────────────────────────────────────
 // Each state receives `p` (the Player instance) as ctx.
@@ -237,6 +243,9 @@ function snapBackState() {
       p.x = lerp(p._snapFrom, homeX, easeOut(t))
       if (p._snapTimer <= 0) {
         p.x = homeX
+        // Grace the snap-back-to-home frames so an overtaken obstacle now sitting
+        // on home X doesn't hit the instant collision turns back on.
+        p._dashGraceTimer = DASH_GRACE_TIME
         p.fsm.transition('running')
       }
     },
@@ -266,6 +275,7 @@ function applyGravity(dt, p) {
 
 function applyDashCooldown(dt, p) {
   if (p.dashCd > 0) p.dashCd -= dt
+  if (p._dashGraceTimer > 0) p._dashGraceTimer -= dt
 }
 
 function applyInvincibility(dt, p) {
@@ -287,6 +297,7 @@ export class Player {
     this.dashTimer = 0
     this.dashCd = 0
     this.invTimer = 0
+    this._dashGraceTimer = 0 // post-snap-back collision grace (see DASH_GRACE_TIME)
     this.friction = 1 // <1 = lantai licin (kasta twist); set by the scene each frame
     this.worldSpeed = 0 // current world scroll speed (px/s); set by the scene each frame
     // Power-ups (GDD §VII)
@@ -350,6 +361,7 @@ export class Player {
     this.dashTimer = 0
     this.dashCd = 0
     this.invTimer = 0
+    this._dashGraceTimer = 0
     this.friction = 1
     this.boostTimer = 0
     this.sandals = 0
@@ -368,6 +380,13 @@ export class Player {
   // Derived flags (read by collision system).
   get invincible() {
     return this.invTimer > 0
+  }
+
+  // Short collision grace after snap-back returns to home X. Unlike `invincible`
+  // it doesn't blink the sprite and doesn't suppress near-miss — it only blocks
+  // a damage hit from an obstacle the dash overtook (see DASH_GRACE_TIME).
+  get dashGrace() {
+    return this._dashGraceTimer > 0
   }
 
   // Kopi Sachet speed boost is active (GDD §VII Passive). Independent of

@@ -59,6 +59,10 @@ function maybeCollision(obstacle, player) {
     return obstacle.zone === 'mid' ? 'dash-break' : 'kopi-smash'
   }
   if (player.invincible) return null
+  // Just snapped back to home X — grace the obstacle the dash overtook so it
+  // can't hit on the very frame collision turns back on. Near-miss already fired
+  // above (this only gates the damage path), so the dash still scores.
+  if (player.dashGrace) return null
   // Dashing through a mid-zone obstacle (the door) BREAKS it instead of
   // damaging the player. The scene removes the obstacle on 'dash-break'.
   // Without this, the door catches up from behind after snap-back ends and

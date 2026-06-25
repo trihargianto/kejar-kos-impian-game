@@ -6,9 +6,20 @@ export class Input {
   constructor(canvas) {
     this.keys = {}
     this._justPressed = {}
+    // Per-frame press COUNT (not just a boolean edge). Two taps landing in the
+    // same frame — easy when the frame rate dips, a human double-tap is ~120ms
+    // but a dropped frame can be 30-60ms+ — would collapse into one boolean and
+    // silently eat the second tap (the "double jump sometimes doesn't fire"
+    // bug). Counting lets the scene consume each tap as its own action.
+    this._pressCount = {}
 
     this._onKeyDown = (e) => {
-      if (!this.keys[e.code]) this._justPressed[e.code] = true
+      // Ignore auto-repeat: a held key must not machine-gun jumps.
+      if (e.repeat) return
+      if (!this.keys[e.code]) {
+        this._justPressed[e.code] = true
+        this._pressCount[e.code] = (this._pressCount[e.code] ?? 0) + 1
+      }
       this.keys[e.code] = true
     }
     this._onKeyUp = (e) => {
@@ -49,6 +60,7 @@ export class Input {
   // single tap can't double-count and burn both jumps at once.)
   pressVirtual(code) {
     this._justPressed[code] = true
+    this._pressCount[code] = (this._pressCount[code] ?? 0) + 1
   }
 
   // Hold/release a virtual code so on-screen buttons can be HELD, not just
@@ -56,7 +68,10 @@ export class Input {
   // presses and is down); releaseVirtual clears the held state. Used by the
   // SLIDE button for hold-to-slide.
   holdVirtual(code) {
-    if (!this.keys[code]) this._justPressed[code] = true
+    if (!this.keys[code]) {
+      this._justPressed[code] = true
+      this._pressCount[code] = (this._pressCount[code] ?? 0) + 1
+    }
     this.keys[code] = true
   }
 
@@ -79,6 +94,15 @@ export class Input {
     return codes.some((c) => this._justPressed[c])
   }
 
+  // Total presses this frame across the given codes — usually 1, but 2+ when
+  // multiple taps land in one (possibly dropped) frame. The scene calls the
+  // action once per count so no tap is lost (e.g. tap-tap → jump + double jump).
+  pressCount(codes) {
+    let n = 0
+    for (const c of codes) n += this._pressCount[c] ?? 0
+    return n
+  }
+
   // True if any of the given codes is currently held down (keyboard key or a
   // held virtual button). Used for hold-to-slide.
   anyDown(codes) {
@@ -91,6 +115,7 @@ export class Input {
 
   flush() {
     this._justPressed = {}
+    this._pressCount = {}
     this._tapPos = null
   }
 

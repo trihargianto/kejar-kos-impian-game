@@ -172,11 +172,14 @@ export class PlayScene {
   _handleInput() {
     const input = this.game.input
 
-    // One jump per frame. Two physical taps land in different frames (frames are
-    // ~16ms, a human double-tap is far slower), so each becomes its own jump and
-    // the second is the double jump. Firing more than once per frame would burn
-    // both jumps on a single tap, so we deliberately do NOT drain.
-    if (input.anyPressed(INTENT.jump)) {
+    // Fire one jump per TAP, even when two taps land in the same frame. At a
+    // steady 60fps a human double-tap (~120ms) naturally falls in separate
+    // frames, but a dropped frame (30-60ms+) can swallow both into one boolean
+    // edge — that's why the double jump felt unresponsive. Counting presses and
+    // firing jump() per count makes tap-tap reliably become jump + double jump.
+    // jump() self-rejects when no jumps remain, so an extra count is harmless.
+    const jumpTaps = input.pressCount(INTENT.jump)
+    for (let i = 0; i < jumpTaps; i++) {
       this._spawnFloats(this.player.jump())
     }
     // Slide: the press edge enters/refreshes the slide (with float + audio);

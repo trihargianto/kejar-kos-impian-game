@@ -40,9 +40,13 @@ export default function GameCanvas() {
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
-  // Boot loading overlay: covers the canvas until all images + SFX are cached so
-  // the player never sees sprites pop in. done=true reveals the game.
-  const [loading, setLoading] = useState({ loaded: 0, total: 0, done: false })
+  // Boot splash overlay. Doubles as the audio-gesture gate: browsers won't play
+  // sound before a user gesture, so the splash waits for a tap and starts music
+  // on that tap — the player never hears a silent-then-pops audio start.
+  //   ready   — all images + SFX cached (or the safety timeout fired); the
+  //             "Tap untuk masuk" prompt replaces the progress bar.
+  //   entered — the player tapped; the splash lifts and the game is revealed.
+  const [loading, setLoading] = useState({ loaded: 0, total: 0, ready: false, entered: false })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -115,16 +119,16 @@ export default function GameCanvas() {
       }),
     ]
 
-    // Boot loading screen: mirror the game's asset progress, then reveal once
-    // everything is cached. The loop is already running behind the overlay, so
-    // the start screen is fully painted (with real art) the moment it lifts.
+    // Boot splash: mirror asset progress, then flip to the "Tap untuk masuk"
+    // prompt once everything is cached. The loop already runs behind the splash,
+    // so the start screen is fully painted (real art) the moment the player taps.
     game.onAssetProgress = (loaded, total) =>
-      setLoading((l) => (l.done ? l : { loaded, total, done: false }))
-    game.assetsReady.then(() => setLoading((l) => ({ ...l, done: true })))
-    // Safety net: never trap the player behind the overlay if a fetch hangs
-    // (offline asset, flaky CDN). The game is already playable with placeholders,
-    // so reveal it after 8s regardless and let assets keep streaming in.
-    const loadGuard = setTimeout(() => setLoading((l) => ({ ...l, done: true })), 8000)
+      setLoading((l) => (l.ready ? l : { ...l, loaded, total }))
+    game.assetsReady.then(() => setLoading((l) => ({ ...l, ready: true })))
+    // Safety net: never trap the player on the splash if a fetch hangs (offline
+    // asset, flaky CDN). Enable the tap prompt after 8s regardless — the game is
+    // playable with placeholders and remaining assets keep streaming in.
+    const loadGuard = setTimeout(() => setLoading((l) => ({ ...l, ready: true })), 8000)
 
     // Intro (first launch only): the Game constructor already entered the
     // 'start' scene before these listeners were attached, so check directly
@@ -273,6 +277,16 @@ export default function GameCanvas() {
     if (key === 'kopi' || key === 'sandal') gameRef.current?.setPaused(false)
   }, [])
 
+  // Enter from the splash. This tap is the user gesture browsers require before
+  // any audio, so unlock the context + kick the home music here — the game is
+  // revealed already "sounded", with no silent-then-pops start.
+  const enterGame = useCallback(() => {
+    const audio = gameRef.current?.audio
+    audio?.unlock()
+    audio?.startHomeMusic()
+    setLoading((l) => ({ ...l, entered: true }))
+  }, [])
+
   const handleTap = useCallback((e) => {
     // First gesture unlocks the Web Audio context (suspended until then), so the
     // home music + SFX start playing instead of staying silent. Idempotent.
@@ -302,9 +316,12 @@ export default function GameCanvas() {
 
       {/* Boot loading overlay — covers the canvas until every image + SFX is
           cached, so the start screen lifts straight to its real art with no
-          sprite-pop. Fades out on done; pointerEvents block taps underneath. */}
-      {!loading.done && (
+          sprite-pop. It also gates audio: the tap that dismisses it is the user
+          gesture browsers need to start sound, so music begins on enter. Stays
+          until the player taps (after load completes). */}
+      {!loading.entered && (
         <div
+          onPointerDown={loading.ready ? enterGame : undefined}
           style={{
             position: 'absolute',
             inset: 0,
@@ -317,6 +334,7 @@ export default function GameCanvas() {
             background: '#1a1a2e',
             color: '#fff',
             userSelect: 'none',
+            cursor: loading.ready ? 'pointer' : 'default',
           }}
         >
           <div
@@ -335,31 +353,52 @@ export default function GameCanvas() {
             IMPIAN
           </div>
 
-          {/* Progress track + fill (flexbox, no grid). */}
-          <div
-            style={{
-              width: '60%',
-              maxWidth: 240,
-              height: 8,
-              borderRadius: 4,
-              background: 'rgba(255,255,255,0.14)',
-              overflow: 'hidden',
-            }}
-          >
+          {loading.ready ? (
+            // Load complete → the gesture gate: tap anywhere to enter + start audio.
             <div
               style={{
-                height: '100%',
-                width: `${loading.total ? Math.round((loading.loaded / loading.total) * 100) : 0}%`,
-                background: '#f1c40f',
-                borderRadius: 4,
-                transition: 'width 0.18s ease-out',
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#fff',
+                padding: '12px 28px',
+                borderRadius: 24,
+                border: '2px solid rgba(255,255,255,0.6)',
+                background: 'rgba(255,255,255,0.08)',
+                animation: 'tapPulse 1.4s ease-in-out infinite',
               }}
-            />
-          </div>
+            >
+              Tap untuk masuk
+            </div>
+          ) : (
+            <>
+              {/* Progress track + fill (flexbox, no grid). */}
+              <div
+                style={{
+                  width: '60%',
+                  maxWidth: 240,
+                  height: 8,
+                  borderRadius: 4,
+                  background: 'rgba(255,255,255,0.14)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${loading.total ? Math.round((loading.loaded / loading.total) * 100) : 0}%`,
+                    background: '#f1c40f',
+                    borderRadius: 4,
+                    transition: 'width 0.18s ease-out',
+                  }}
+                />
+              </div>
 
-          <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#aaa' }}>
-            Memuat{loading.total ? ` ${loading.loaded}/${loading.total}` : '…'}
-          </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#aaa' }}>
+                Memuat{loading.total ? ` ${loading.loaded}/${loading.total}` : '…'}
+              </div>
+            </>
+          )}
         </div>
       )}
 

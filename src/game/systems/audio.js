@@ -293,9 +293,22 @@ export class AudioSystem {
     })
   }
 
+  // Start (or ensure) the home-screen music. Called from the splash tap, where
+  // the gesture has just unlocked the context — so unlike the boot-time
+  // SCENE_CHANGE trigger (which fires while suspended), this actually plays.
+  startHomeMusic() {
+    if (this._musicId === 'music:home' && this._music?.playing(this._musicVoice)) return
+    this._musicPlay('music:home')
+  }
+
   _musicPlay(id) {
     // Already looping this track? Leave it (avoids a restart on re-entry).
-    if (this._music && this._musicId === id) return
+    if (this._music && this._musicId === id) {
+      // ...unless the context was suspended at boot and the play got dropped —
+      // re-issue so the splash tap actually starts it.
+      if (!this._music.playing(this._musicVoice)) this._musicVoice = this._music.play()
+      return
+    }
     if (this._music) this._musicStop()
     const h = this._howl(id, { loop: true })
     if (!h) return

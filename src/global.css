@@ -26,3 +26,16 @@ body,
     opacity: 0;
   }
 }
+
+/* "Tap untuk masuk" prompt on the splash — gentle breathing pulse. */
+@keyframes tapPulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}

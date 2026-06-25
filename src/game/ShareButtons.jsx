@@ -13,7 +13,7 @@ import { getRank } from './systems/score.js'
 // Pinned to the top safe area, clear of the reveal card + chips + retry prompt
 // the scene draws lower. Every handler stopPropagation so a tap here doesn't
 // fall through to the container's tap-to-retry.
-export function ShareButtons({ result }) {
+export function ShareButtons({ result, top = '47%' }) {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
 
@@ -99,7 +99,7 @@ export function ShareButtons({ result }) {
       onTouchStart={stop}
       style={{
         position: 'absolute',
-        top: 'calc(env(safe-area-inset-top, 0px) + 10px)',
+        top,
         left: 0,
         right: 0,
         display: 'flex',

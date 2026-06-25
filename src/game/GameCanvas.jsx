@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Game } from './Game.js'
 import { EVENTS } from './core/EventBus.js'
 import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
+import { KosCard } from './KosCard.jsx'
 import { ShareButtons } from './ShareButtons.jsx'
 import { SettingsPanel } from './SettingsPanel.jsx'
 import { TutorialOverlay } from './TutorialOverlay.jsx'
@@ -521,11 +522,16 @@ export default function GameCanvas() {
         />
       ))}
 
-      {/* Share / download — game-over only. Pinned to the top safe area, clear of
-          the reveal card + chips + retry prompt the canvas scene draws below.
-          Buttons stopPropagation so a tap on them doesn't trigger the
-          container's tap-to-retry. */}
-      {gameOver && <ShareButtons result={gameOver} />}
+      {/* Share / download — game-over only. Anchored just below the canvas
+          "Rekor: xxx" line (~45% of height) and above the retry prompt, which
+          the scene draws lower. Buttons stopPropagation so a tap doesn't
+          trigger the container's tap-to-retry. */}
+      {gameOver && <ShareButtons result={gameOver} top="47%" />}
+
+      {/* Kos reveal card — game-over only. Clickable Mamikos-style listing card
+          that opens the listing in a new tab. Fills the lower half of the
+          game-over screen (the canvas leaves that area clear). */}
+      {gameOver && <KosCard result={gameOver} onOpen={() => playMenuTap()} />}
 
       {/* Settings overlay — opened from the start menu or the pause menu. Sits
           above everything (incl. the pause overlay) via its own z-index. */}

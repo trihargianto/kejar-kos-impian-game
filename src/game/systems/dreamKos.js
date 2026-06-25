@@ -46,16 +46,34 @@ export function budgetFromCoins(coins) {
 // Each listing carries a tier (0..3) matching KASTA_DEFS indices. A listing is
 // eligible only if its tier ≤ the player's reached tier. Price + tags drive
 // the within-tier sort and the chip re-roll filter.
+//
+// Display fields for the Mamikos-style result card (KosCard.jsx):
+//   type    'Campur' | 'Putri' | 'Putra' — the badge over the photo
+//   rating  number shown next to the star
+//   photo   optional image URL (public/ path); null → a gradient placeholder
+//   url     the Mamikos listing link the card opens; replace these with the real
+//           listing URLs later (default points at the homepage as a safe stub)
+const MAMIKOS_URL = 'https://mamikos.com'
 const LISTINGS = Object.freeze([
-  { name: 'Kos Sederhana Berkah', area: 'Seturan', price: 500000, tier: 0, tags: ['wifi'] },
-  { name: 'Kos Pak Budi', area: 'Gejayan', price: 550000, tier: 0, tags: ['parkir', 'dapur'] },
-  { name: 'Kos Anggrek Dekat Kampus', area: 'Caturtunggal', price: 600000, tier: 1, tags: ['kampus', 'wifi'] },
-  { name: 'Kos Mawar Asri', area: 'Condongcatur', price: 700000, tier: 1, tags: ['wifi', 'kampus', 'parkir'] },
-  { name: 'Kos Harmoni', area: 'Maguwoharjo', price: 750000, tier: 1, tags: ['ac', 'km_dalam', 'dapur'] },
-  { name: 'Kos Putri Melati', area: 'Sleman', price: 850000, tier: 2, tags: ['ac', 'wifi', 'km_dalam'] },
-  { name: 'Kos Eksklusif Cendana', area: 'Depok', price: 1500000, tier: 2, tags: ['ac', 'wifi', 'km_dalam', 'parkir', 'dapur'] },
-  { name: 'Kos Singgahsini Premium', area: 'Babarsari', price: 1800000, tier: 3, tags: ['ac', 'wifi', 'km_dalam', 'kampus', 'parkir', 'dapur'] },
+  { name: 'Kos Sederhana Berkah', area: 'Seturan', price: 500000, tier: 0, type: 'Campur', rating: 4.2, photo: null, url: MAMIKOS_URL, tags: ['wifi'] },
+  { name: 'Kos Pak Budi', area: 'Gejayan', price: 550000, tier: 0, type: 'Putra', rating: 4.0, photo: null, url: MAMIKOS_URL, tags: ['parkir', 'dapur'] },
+  { name: 'Kos Anggrek Dekat Kampus', area: 'Caturtunggal', price: 600000, tier: 1, type: 'Putri', rating: 4.4, photo: null, url: MAMIKOS_URL, tags: ['kampus', 'wifi'] },
+  { name: 'Kos Mawar Asri', area: 'Condongcatur', price: 700000, tier: 1, type: 'Putri', rating: 4.5, photo: null, url: MAMIKOS_URL, tags: ['wifi', 'kampus', 'parkir'] },
+  { name: 'Kos Harmoni', area: 'Maguwoharjo', price: 750000, tier: 1, type: 'Campur', rating: 4.3, photo: null, url: MAMIKOS_URL, tags: ['ac', 'km_dalam', 'dapur'] },
+  { name: 'Kos Putri Melati', area: 'Sleman', price: 850000, tier: 2, type: 'Putri', rating: 4.6, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam'] },
+  { name: 'Kos Eksklusif Cendana', area: 'Depok', price: 1500000, tier: 2, type: 'Campur', rating: 4.7, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam', 'parkir', 'dapur'] },
+  { name: 'Kos Singgahsini Premium', area: 'Babarsari', price: 1800000, tier: 3, type: 'Campur', rating: 4.9, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam', 'kampus', 'parkir', 'dapur'] },
 ])
+
+// Human labels for facility tag ids, used by the result card's facility line.
+export const FACILITY_LABEL = Object.freeze({
+  ac: 'AC',
+  wifi: 'WiFi',
+  kampus: 'Dekat Kampus',
+  km_dalam: 'K. Mandi Dalam',
+  parkir: 'Parkir Luas',
+  dapur: 'Dapur',
+})
 
 const CHEAPEST = LISTINGS.reduce((a, b) => (b.price < a.price ? b : a))
 
@@ -73,6 +91,20 @@ export function matchDreamKos({ budget, tier } = {}) {
     b.tier - a.tier || b.price - a.price
   )
   return elig[0]
+}
+
+// Same match, but with affordability context for the result card wording:
+//   { kos, affordable, shortfall }
+//   affordable  true  → budget covers the kos (price ≤ budget)
+//               false → the shown kos (cheapest) costs MORE than the budget, so
+//                       the card nudges "add Rp <shortfall> to reach it"
+//   shortfall   rupiah still needed when not affordable (0 when affordable)
+// Built on matchDreamKos so the matching logic stays single-sourced.
+export function matchDreamKosDetailed({ budget, tier } = {}) {
+  const kos = matchDreamKos({ budget, tier })
+  const b = budget ?? 0
+  const affordable = kos.price <= b
+  return { kos, affordable, shortfall: affordable ? 0 : kos.price - b }
 }
 
 // Chip re-roll: same budget + tier band, but constrained to listings that carry

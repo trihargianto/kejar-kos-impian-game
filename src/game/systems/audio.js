@@ -36,6 +36,19 @@ export class AudioSystem {
     // (covers the looping music + any in-flight one-shots in one switch).
     Howler.mute(!this.enabled)
     this._wire()
+    this._preloadSfx()
+  }
+
+  // Build every one-shot Howl up front so the clip's buffer decodes at boot, not
+  // on its first in-game trigger (which would hitch the frame that fires it).
+  // Music ('music:*') is skipped — it's a streamed loop, started on scene-enter.
+  // Howler decodes asynchronously off the main thread, so this only kicks off
+  // the work; nothing here blocks construction.
+  _preloadSfx() {
+    for (const id of Object.keys(MANIFEST.audio ?? {})) {
+      if (id.startsWith('music:')) continue
+      this._howl(id) // caches + starts the async decode (preload:true)
+    }
   }
 
   // Lazily build (and cache) the Howl for an audio id. `loop` clips (music) are

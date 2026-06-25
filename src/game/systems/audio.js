@@ -8,8 +8,17 @@
 // WebAudio is unavailable (SSR, tests, locked-down browsers).
 //
 // Map (GDD §XIV): jump "Hup", hit "ember jatuh", near-miss pitch-up per combo,
-// game-over sad tone, 1000m sirine. Synth approximations until real SFX land.
+// game-over sad tone, 1000m sirine. Synth approximations cover the events that
+// have no recorded clip yet.
+//
+// Recorded clips play through Howler (howlerjs.com): it defaults to the Web
+// Audio API and voice-pools internally, so rapid one-shots (coins, actions)
+// reuse source nodes instead of leaking an HTMLAudioElement per play — the
+// cloneNode() approach piled up media elements and made the game stutter the
+// longer a run went. Synth tones stay on a small hand-rolled WebAudio context.
+import { Howl, Howler } from 'howler'
 import { EVENTS } from '../core/EventBus.js'
+import { MANIFEST } from '../assets/manifest.js'
 import { loadSettings } from './settings.js'
 
 export class AudioSystem {
@@ -18,9 +27,28 @@ export class AudioSystem {
     this.assets = assets
     this.ctx = null
     this._offs = []
+    this._howls = new Map() // id → Howl, built lazily from MANIFEST.audio
+    this._music = null
+    this._musicId = null
     // Initial SFX on/off from saved settings.
     this.enabled = loadSettings().sfx
+    // Howler's global mute mirrors `enabled` so a disabled run is truly silent
+    // (covers the looping music + any in-flight one-shots in one switch).
+    Howler.mute(!this.enabled)
     this._wire()
+  }
+
+  // Lazily build (and cache) the Howl for an audio id. `loop` clips (music) are
+  // streamed via html5 so they don't tie up a Web Audio buffer for their whole
+  // length; short SFX use the default Web Audio path for low-latency pooling.
+  _howl(id, { loop = false } = {}) {
+    let h = this._howls.get(id)
+    if (h) return h
+    const src = MANIFEST.audio?.[id]
+    if (!src) return null
+    h = new Howl({ src: [src], loop, html5: loop, preload: true })
+    this._howls.set(id, h)
+    return h
   }
 
   // Lazily build the AudioContext (must follow a user gesture).
@@ -60,18 +88,15 @@ export class AudioSystem {
     osc.stop(t + dur + 0.02)
   }
 
-  // Play a pre-loaded audio asset by id. Falls back to nothing if missing.
+  // Play a one-shot SFX by id. Howler pools voices on its Web Audio context, so
+  // overlapping/rapid triggers reuse source nodes and self-clean — no per-play
+  // HTMLAudioElement to pile up (the old cloneNode() path was the stutter).
   _playSample(id, volume = 1) {
     if (!this.enabled) return
-    const el = this.assets?.audio(id)
-    if (!el) return
-    try {
-      const clone = el.cloneNode()
-      clone.volume = volume
-      clone.play().catch(() => {})
-    } catch {
-      // ignore
-    }
+    const h = this._howl(id)
+    if (!h) return
+    const voiceId = h.play()
+    if (volume !== 1) h.volume(volume, voiceId)
   }
 
   // Schedule a tone to start at an absolute AudioContext time (for fanfares).
@@ -205,34 +230,44 @@ export class AudioSystem {
   }
 
   _musicPlay(id) {
+    // Already looping this track? Leave it (avoids a restart on re-entry).
+    if (this._music && this._musicId === id) return
     if (this._music) this._musicStop()
-    const el = this.assets?.audio(id)
-    if (!el) return
-    const m = el.cloneNode()
-    m.loop = true
-    m.volume = this.enabled ? 0.45 : 0
-    m.play().catch(() => {})
-    this._music = m
+    const h = this._howl(id, { loop: true })
+    if (!h) return
+    h.volume(0.45)
+    this._musicVoice = h.play()
+    this._music = h
     this._musicId = id
   }
 
   _musicStop() {
     if (!this._music) return
-    this._music.pause()
-    this._music.currentTime = 0
+    this._music.stop()
     this._music = null
     this._musicId = null
+    this._musicVoice = null
   }
 
   setEnabled(on) {
     this.enabled = !!on
-    if (this._music) this._music.volume = on ? 0.45 : 0
+    // One switch silences everything Howler owns (music + any live one-shots).
+    Howler.mute(!this.enabled)
   }
 
   destroy() {
     this._offs.forEach((off) => off())
     this._offs = []
     this._musicStop()
+    // Release every Howl (frees its buffers + any pooled nodes).
+    for (const h of this._howls.values()) {
+      try {
+        h.unload()
+      } catch {
+        // ignore
+      }
+    }
+    this._howls.clear()
     try {
       this.ctx?.close()
     } catch {

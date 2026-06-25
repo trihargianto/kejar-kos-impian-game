@@ -14,6 +14,7 @@
     "format:check": "prettier --check src/"
   },
   "dependencies": {
+    "howler": "^2.2.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

@@ -41,10 +41,11 @@ export class AssetLoader {
         }),
     )
 
+    // Audio playback is owned by AudioSystem (Howler), which loads clips by URL
+    // from the manifest directly. We still record the id→src map here so has()/
+    // audio() keep answering for non-playback callers and tests.
     const audioPromises = Object.entries(manifest.audio || {}).map(([id, src]) => {
-      const a = new Audio(src)
-      a.preload = 'auto'
-      this._audio.set(id, a)
+      this._audio.set(id, src)
       return Promise.resolve()
     })
 

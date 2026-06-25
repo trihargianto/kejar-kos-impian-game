@@ -7,6 +7,8 @@ export class Shake {
     this.time = 0
     this.strength = 0
     this.duration = MAX_DURATION
+    // Reused offset object — avoids one alloc per frame (called every draw).
+    this._off = { x: 0, y: 0 }
   }
 
   trigger(strength = 8, duration = MAX_DURATION) {
@@ -20,8 +22,15 @@ export class Shake {
   }
 
   offset() {
-    if (this.time <= 0) return { x: 0, y: 0 }
+    const o = this._off
+    if (this.time <= 0) {
+      o.x = 0
+      o.y = 0
+      return o
+    }
     const s = this.strength * (this.time / this.duration)
-    return { x: (Math.random() - 0.5) * s, y: (Math.random() - 0.5) * s }
+    o.x = (Math.random() - 0.5) * s
+    o.y = (Math.random() - 0.5) * s
+    return o
   }
 }

@@ -40,6 +40,26 @@ export class Collectible {
     this.collected = false
     this._bob = 0
     this._labelSize = Math.round(9 * S)
+    // Cached telegraph glow gradient. Built in LOCAL space (centered at origin)
+    // so it's position-independent and reusable across frames via ctx.translate.
+    // Rebuilt only when the quantized glow radius changes (pulse crosses an
+    // integer px) — avoids createRadialGradient per coin per frame (was the
+    // single biggest per-frame allocation when many coins are on screen).
+    this._glowGrad = null
+    this._glowKey = -1
+  }
+
+  // Returns a radial gradient centered at (0,0) for the current glow radius.
+  // `gr` is quantized to whole px so micro pulse changes reuse the cached object.
+  _glow(ctx, gr, stops) {
+    const key = gr | 0
+    if (key !== this._glowKey) {
+      const g = ctx.createRadialGradient(0, 0, this.r * 0.3, 0, 0, key)
+      for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1])
+      this._glowGrad = g
+      this._glowKey = key
+    }
+    return this._glowGrad
   }
 
   // AABB so the shared aabb() helper / circle test can read uniform bounds.
@@ -154,104 +174,88 @@ export class Collectible {
   // Pulse/orbit reuse the bob phase so it costs no extra state.
   _drawTelegraph(ctx, yb) {
     const t = this._bob
-    const pulse = 0.7 + 0.3 * Math.sin(t * 0.8)
+    // One sin() for the slow pulse, reused for radius + alpha (was 2+ per coin).
+    const slow = Math.sin(t * 0.8)
+    const pulse = 0.7 + 0.3 * slow
 
-    if (this.kind === 'heart') {
-      // Heart: full treatment in red — same tier as power-ups (rare, important).
-      const rgb = '231,76,60'
-      ctx.save()
-
-      // 1. Glow halo.
-      const gr = this.r * (1.9 + 0.2 * Math.sin(t * 0.8))
-      const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
-      grad.addColorStop(0, `rgba(${rgb},${0.6 * pulse})`)
-      grad.addColorStop(0.6, `rgba(${rgb},${0.25 * pulse})`)
-      grad.addColorStop(1, `rgba(${rgb},0)`)
-      ctx.fillStyle = grad
-      ctx.beginPath()
-      ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
-      ctx.fill()
-
-      // 2. Bright ring hugging the item.
-      ctx.lineWidth = Math.max(1.5, this.r * 0.22)
-      ctx.strokeStyle = `rgba(${rgb},${0.85 * pulse})`
-      ctx.beginPath()
-      ctx.arc(this.x, yb, this.r * 1.32, 0, Math.PI * 2)
-      ctx.stroke()
-
-      // 3. Orbiting sparkles — pink-white tint so they read as life energy.
-      const sparkles = 4
-      const orbit = this.r * 1.55
-      for (let i = 0; i < sparkles; i++) {
-        const a = t * 1.4 + (i / sparkles) * Math.PI * 2
-        const sx = this.x + Math.cos(a) * orbit
-        const sy = yb + Math.sin(a) * orbit
-        const twinkle = 0.5 + 0.5 * Math.sin(t * 3 + i)
-        ctx.fillStyle = `rgba(255,180,180,${0.9 * twinkle})`
-        ctx.beginPath()
-        ctx.arc(sx, sy, Math.max(1.2, this.r * 0.18 * twinkle), 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      ctx.restore()
-      return
-    }
+    // Work in local space so the cached gradient (origin-centered) lines up;
+    // the pulse fade rides on globalAlpha instead of being baked into stops,
+    // which keeps the gradient object reusable frame-to-frame.
+    ctx.save()
+    ctx.translate(this.x, yb)
 
     if (this.kind === 'coin') {
       // Subtle gold glow only.
-      const gr = this.r * (1.5 + 0.15 * Math.sin(t * 0.8))
-      const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
-      grad.addColorStop(0, `rgba(255,205,50,${0.4 * pulse})`)
-      grad.addColorStop(0.6, `rgba(255,205,50,${0.16 * pulse})`)
-      grad.addColorStop(1, 'rgba(255,205,50,0)')
-      ctx.save()
-      ctx.fillStyle = grad
+      const gr = this.r * (1.5 + 0.15 * slow)
+      ctx.globalAlpha = pulse
+      ctx.fillStyle = this._glow(ctx, gr, COIN_STOPS)
       ctx.beginPath()
-      ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
+      ctx.arc(0, 0, gr, 0, TWO_PI)
       ctx.fill()
       ctx.restore()
       return
     }
 
-    // Power-ups (kopi, sandal): full treatment in mint-green.
-    const rgb = '70,235,165'
-    ctx.save()
+    // heart + power-ups share the full treatment; only palette differs.
+    const heart = this.kind === 'heart'
+    const stops = heart ? HEART_STOPS : POWER_STOPS
+    const ring = heart ? '231,76,60' : '70,235,165'
+    const sparkleRgb = heart ? '255,180,180' : '255,255,255'
+    const sparkles = heart ? 4 : 3
+    const spin = heart ? 1.4 : 1.2
 
     // 1. Glow halo.
-    const gr = this.r * (1.9 + 0.2 * Math.sin(t * 0.8))
-    const grad = ctx.createRadialGradient(this.x, yb, this.r * 0.3, this.x, yb, gr)
-    grad.addColorStop(0, `rgba(${rgb},${0.6 * pulse})`)
-    grad.addColorStop(0.6, `rgba(${rgb},${0.25 * pulse})`)
-    grad.addColorStop(1, `rgba(${rgb},0)`)
-    ctx.fillStyle = grad
+    const gr = this.r * (1.9 + 0.2 * slow)
+    ctx.globalAlpha = pulse
+    ctx.fillStyle = this._glow(ctx, gr, stops)
     ctx.beginPath()
-    ctx.arc(this.x, yb, gr, 0, Math.PI * 2)
+    ctx.arc(0, 0, gr, 0, TWO_PI)
     ctx.fill()
 
     // 2. Bright ring hugging the item.
     ctx.lineWidth = Math.max(1.5, this.r * 0.22)
-    ctx.strokeStyle = `rgba(${rgb},${0.85 * pulse})`
+    ctx.strokeStyle = `rgba(${ring},0.85)`
     ctx.beginPath()
-    ctx.arc(this.x, yb, this.r * 1.32, 0, Math.PI * 2)
+    ctx.arc(0, 0, this.r * 1.32, 0, TWO_PI)
     ctx.stroke()
+    ctx.globalAlpha = 1
 
     // 3. Orbiting sparkles.
-    const sparkles = 3
     const orbit = this.r * 1.55
+    const base = t * spin
+    const dotMax = this.r * 0.18
     for (let i = 0; i < sparkles; i++) {
-      const a = t * 1.2 + (i / sparkles) * Math.PI * 2
-      const sx = this.x + Math.cos(a) * orbit
-      const sy = yb + Math.sin(a) * orbit
+      const a = base + (i / sparkles) * TWO_PI
       const twinkle = 0.5 + 0.5 * Math.sin(t * 3 + i)
-      ctx.fillStyle = `rgba(255,255,255,${0.85 * twinkle})`
+      ctx.fillStyle = `rgba(${sparkleRgb},${(heart ? 0.9 : 0.85) * twinkle})`
       ctx.beginPath()
-      ctx.arc(sx, sy, Math.max(1.2, this.r * 0.18 * twinkle), 0, Math.PI * 2)
+      ctx.arc(Math.cos(a) * orbit, Math.sin(a) * orbit, Math.max(1.2, dotMax * twinkle), 0, TWO_PI)
       ctx.fill()
     }
 
     ctx.restore()
   }
 }
+
+const TWO_PI = Math.PI * 2
+// Glow gradient color stops with FIXED alpha (pulse rides on globalAlpha so the
+// gradient object stays cacheable). Stop offsets are radius-relative, so the
+// same stops hold as the quantized glow radius changes.
+const COIN_STOPS = [
+  [0, 'rgba(255,205,50,0.4)'],
+  [0.6, 'rgba(255,205,50,0.16)'],
+  [1, 'rgba(255,205,50,0)'],
+]
+const HEART_STOPS = [
+  [0, 'rgba(231,76,60,0.6)'],
+  [0.6, 'rgba(231,76,60,0.25)'],
+  [1, 'rgba(231,76,60,0)'],
+]
+const POWER_STOPS = [
+  [0, 'rgba(70,235,165,0.6)'],
+  [0.6, 'rgba(70,235,165,0.25)'],
+  [1, 'rgba(70,235,165,0)'],
+]
 
 function radiusFor(kind) {
   if (kind === 'coin') return COIN_R

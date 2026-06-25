@@ -516,13 +516,14 @@ export class Player {
     const t = this._boostPhase
     // Fade the whole effect out as the boost runs down so it doesn't pop off.
     const fade = Math.min(1, this.boostTimer / 0.6)
-    const pulse = 0.7 + 0.3 * Math.sin(t * 10)
+    const sin10 = Math.sin(t * 10) // one sin reused for pulse + aura radius
+    const pulse = 0.7 + 0.3 * sin10
 
     ctx.save()
     ctx.globalAlpha = fade
 
     // 1. Warm radial aura (kopi/energy = golden-orange).
-    const r = this.w * (1.6 + 0.15 * Math.sin(t * 10))
+    const r = this.w * (1.6 + 0.15 * sin10)
     const g = ctx.createRadialGradient(cx, cy, this.w * 0.2, cx, cy, r)
     g.addColorStop(0, `rgba(255,190,70,${0.45 * pulse})`)
     g.addColorStop(0.6, `rgba(255,150,40,${0.18 * pulse})`)
@@ -536,11 +537,12 @@ export class Player {
     ctx.strokeStyle = `rgba(255,236,180,${0.8 * fade})`
     ctx.lineWidth = Math.max(1.5, 2 * S)
     const lines = 4
+    const span = this.w * 2.4 // constant across lines — hoisted out of the loop
+    const baseOff = t * 900 * S
     for (let i = 0; i < lines; i++) {
       const ly = drawY + (h / (lines + 1)) * (i + 1)
       // Each line scrolls left, offset per index, wrapping over a short span.
-      const span = this.w * 2.4
-      const off = ((t * 900 * S + i * 37) % span)
+      const off = (baseOff + i * 37) % span
       const x2 = this.x - off
       const len = this.w * (0.5 + 0.4 * ((i + 1) / lines))
       ctx.beginPath()

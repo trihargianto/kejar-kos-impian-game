@@ -8,8 +8,6 @@
 // sandal got there first, it scrolled off-screen), the sandal keeps flying
 // and expires off the right edge — the throw still "looked right" even if it
 // no longer hits anything.
-import { roundRect } from '../core/utils.js'
-
 const SANDAL_W = 38 // design px
 const SANDAL_H = 24
 // Tuned for readability: at 700 px/s the sandal crosses the 390px screen in
@@ -87,12 +85,13 @@ export class SandalProjectile {
     ctx.rotate(this._spin)
     // Sole (matches the Collectible 'sandal' kind palette so they read as the
     // same object — pickup vs thrown).
+    // One path → fill + stroke (was building the rounded-rect path twice).
     ctx.fillStyle = '#2980b9'
-    roundRect(ctx, -this.w / 2, -this.h / 2, this.w, this.h, this.h * 0.4)
     ctx.strokeStyle = '#1b4f72'
     ctx.lineWidth = Math.max(1, this.w * 0.05)
     ctx.beginPath()
     ctx.roundRect(-this.w / 2, -this.h / 2, this.w, this.h, this.h * 0.4)
+    ctx.fill()
     ctx.stroke()
     // V-strap (the flip-flop Y strap) — the part that makes a sandal read as
     // a sandal even mid-spin.

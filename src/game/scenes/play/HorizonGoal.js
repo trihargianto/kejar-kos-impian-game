@@ -39,8 +39,17 @@ export class HorizonGoal {
     const span = Math.max(1, next - prevThreshold)
     const frac = Math.min(1, Math.max(0, (dist - prevThreshold) / span))
 
-    const leftLabel = titleCase(kasta.label)
-    const rightLabel = nextDef ? titleCase(nextDef.label) : 'Kos Impian'
+    // Labels change only at a kasta boundary; titleCase rebuilds strings, so
+    // memoize on the raw label pair instead of recomputing every frame.
+    const rawLeft = kasta.label
+    const rawRight = nextDef ? nextDef.label : null
+    if (this._labelKey !== rawLeft + '|' + rawRight) {
+      this._leftLabel = titleCase(rawLeft)
+      this._rightLabel = rawRight ? titleCase(rawRight) : 'Kos Impian'
+      this._labelKey = rawLeft + '|' + rawRight
+    }
+    const leftLabel = this._leftLabel
+    const rightLabel = this._rightLabel
 
     // Bar + label geometry. Bar is a fixed slice in the middle; names flank it.
     const barW = Math.round(W * 0.30)
@@ -58,8 +67,14 @@ export class HorizonGoal {
     ctx.shadowOffsetY = Math.round(1 * S)
 
     ctx.font = `${fontPx}px ${FONTS.mono}`
-    const leftW = ctx.measureText(leftLabel).width
-    const rightW = ctx.measureText(rightLabel).width
+    // Widths depend only on (label, fontPx). fontPx changes on resize via S.
+    if (this._wKey !== leftLabel + '|' + rightLabel + '|' + fontPx) {
+      this._leftW = ctx.measureText(leftLabel).width
+      this._rightW = ctx.measureText(rightLabel).width
+      this._wKey = leftLabel + '|' + rightLabel + '|' + fontPx
+    }
+    const leftW = this._leftW
+    const rightW = this._rightW
 
     // Center the whole group so it's symmetric and never reaches the corners.
     const groupW = leftW + gap + barW + gap + houseW + gap + rightW

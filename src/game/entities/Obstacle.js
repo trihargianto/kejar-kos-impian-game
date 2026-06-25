@@ -189,6 +189,8 @@ export class Obstacle {
     this._kfade = 1
     this._labelSize = Math.round(11 * S)
     this._labelLineH = Math.round(13 * S)
+    // Pre-split label lines once — draw() runs every frame per obstacle.
+    this._labelLines = this.label ? this.label.split('\n') : []
   }
 
   // Pick a random obstacle from the pool available at the given kasta tier.
@@ -312,12 +314,11 @@ export class Obstacle {
     ctx.fillStyle = '#fff'
     ctx.font = `bold ${this._labelSize}px monospace`
     ctx.textAlign = 'center'
-    this.label.split('\n').forEach((line, i) => {
-      ctx.fillText(
-        line,
-        this.x + this.w / 2,
-        yb + this.h / 2 - this._labelLineH / 2 + i * this._labelLineH
-      )
-    })
+    const lines = this._labelLines
+    const cx = this.x + this.w / 2
+    const baseY = yb + this.h / 2 - this._labelLineH / 2
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], cx, baseY + i * this._labelLineH)
+    }
   }
 }

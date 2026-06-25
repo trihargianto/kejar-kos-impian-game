@@ -54,14 +54,23 @@ export class Background {
     // fallback is already calm). A top-heavy gradient darkens the sky band so
     // gameplay — and especially the HUD up top — reads clearly over the wall.
     if (game.assets?.has(`bg:${cur.id}`)) {
-      const grad = ctx.createLinearGradient(0, 0, 0, game.floorY)
-      grad.addColorStop(0, `rgba(0,0,0,${SCRIM_TOP})`)
-      grad.addColorStop(1, `rgba(0,0,0,${SCRIM_BOTTOM})`)
       ctx.save()
-      ctx.fillStyle = grad
+      ctx.fillStyle = this._scrim(ctx, game.floorY)
       ctx.fillRect(0, 0, game.width, game.floorY)
       ctx.restore()
     }
+  }
+
+  // Scrim gradient depends only on floorY, which changes on resize — not per
+  // frame. Cache it so we don't build a gradient + 2 color stops every frame.
+  _scrim(ctx, floorY) {
+    if (this._scrimGrad && this._scrimKey === floorY) return this._scrimGrad
+    const grad = ctx.createLinearGradient(0, 0, 0, floorY)
+    grad.addColorStop(0, `rgba(0,0,0,${SCRIM_TOP})`)
+    grad.addColorStop(1, `rgba(0,0,0,${SCRIM_BOTTOM})`)
+    this._scrimGrad = grad
+    this._scrimKey = floorY
+    return grad
   }
 
   // Draw one kasta's wall at the given alpha. Uses the sprite if present, else
@@ -85,7 +94,9 @@ export class Background {
     const bandH = floorY
     const tileW = Math.max(1, Math.round(bandH * (sprite.width / sprite.height)))
     // Parallax scroll: drift left with distance, wrapped to one tile width.
-    const offset = ((dist * PARALLAX * game.scale) % tileW + tileW) % tileW
+    // dist is monotonic ≥0 and the multipliers are positive, so the product is
+    // never negative — a single modulo already lands in [0, tileW).
+    const offset = (dist * PARALLAX * game.scale) % tileW
 
     // Tile across the width, starting one tile left so the wrap seam is covered.
     for (let x = -offset; x < W; x += tileW) {

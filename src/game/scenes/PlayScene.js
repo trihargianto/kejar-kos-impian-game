@@ -576,11 +576,11 @@ export class PlayScene {
     })
 
     this.collectibles.draw(ctx)
-    this.obs.forEach((o) => o.draw(ctx))
+    for (let i = 0; i < this.obs.length; i++) this.obs[i].draw(ctx)
     // Sandal projectiles fly in front of obstacles so the throw reads clearly
     // even when traffic is dense. Drawn behind the player so the launch point
     // (the player's right hand) stays visually anchored.
-    this.sandals.forEach((s) => s.draw(ctx))
+    for (let i = 0; i < this.sandals.length; i++) this.sandals[i].draw(ctx)
     this.player.draw(ctx)
 
     this.hud.draw(ctx, this.game, {
@@ -614,11 +614,24 @@ export class PlayScene {
     // Word-wrap to fit the frame width (the prompt is a full sentence and used to
     // overflow off both edges on narrow screens). Banner height grows per line.
     const maxTextW = W - padX * 4
-    const lines = wrapText(ctx, this.activePrompt, maxTextW)
-    const boxW = Math.min(
-      W - padX * 2,
-      Math.max(...lines.map((l) => ctx.measureText(l).width)) + padX * 2
-    )
+    // Word-wrap + width measurement are pure functions of (prompt, font, W).
+    // The banner repaints every frame for its whole lifetime, so cache the
+    // result and only recompute when the prompt or layout width changes —
+    // otherwise it's an O(words) measureText sweep + a spread Math.max/frame.
+    let wrap = this._promptWrap
+    if (!wrap || wrap.text !== this.activePrompt || wrap.w !== W) {
+      const lines = wrapText(ctx, this.activePrompt, maxTextW)
+      let maxLineW = 0
+      for (let i = 0; i < lines.length; i++) {
+        const lw = ctx.measureText(lines[i]).width
+        if (lw > maxLineW) maxLineW = lw
+      }
+      const boxW = Math.min(W - padX * 2, maxLineW + padX * 2)
+      wrap = { text: this.activePrompt, w: W, lines, boxW }
+      this._promptWrap = wrap
+    }
+    const lines = wrap.lines
+    const boxW = wrap.boxW
     const boxH = lines.length * lineH + padY * 2
     const cyTop = H * 0.2 - boxH / 2
 

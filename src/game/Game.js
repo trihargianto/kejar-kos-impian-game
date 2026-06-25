@@ -128,14 +128,19 @@ export class Game {
 
       // Hit-stop: while frozen, drain the timer but run no sim updates. Shake
       // still advances so the freeze + shake read as one punchy beat.
+      this.shake.update(dt)
       if (this._freeze > 0) {
         this._freeze -= dt
-        this.shake.update(dt)
       } else {
-        this.shake.update(dt)
         this._scenes.update(dt)
-        this.floats.forEach((f) => f.update(dt))
-        this.floats = this.floats.filter((f) => !f.dead())
+        // In-place update + compaction: no new array per frame (GC), no copy
+        // of survivors. Walk backward so splice doesn't shift unseen indices.
+        const floats = this.floats
+        for (let i = floats.length - 1; i >= 0; i--) {
+          const f = floats[i]
+          f.update(dt)
+          if (f.dead()) floats.splice(i, 1)
+        }
       }
     }
 
@@ -145,7 +150,8 @@ export class Game {
     ctx.save()
     ctx.translate(off.x, off.y)
     this._scenes.draw(ctx)
-    this.floats.forEach((f) => f.draw(ctx))
+    const floats = this.floats
+    for (let i = 0; i < floats.length; i++) floats[i].draw(ctx)
     ctx.restore()
 
     this.input.flush()

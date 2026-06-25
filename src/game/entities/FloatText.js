@@ -14,6 +14,9 @@ export class FloatText {
     this.size = size
     this.life = 1.0
     this.maxLife = 1.0
+    // Precompute the font string + line split once — draw() runs every frame.
+    this._font = `bold ${size}px ${FONTS.mono}`
+    this._lines = String(text).split('\n')
   }
 
   update(dt) {
@@ -30,11 +33,12 @@ export class FloatText {
     ctx.globalAlpha = Math.max(0, this.life / this.maxLife)
     setTextShadow(ctx, this.size / 20) // scale shadow with text size
     ctx.fillStyle = this.color
-    ctx.font = `bold ${this.size}px ${FONTS.mono}`
+    ctx.font = this._font
     ctx.textAlign = 'center'
-    this.text.split('\n').forEach((line, i) => {
-      ctx.fillText(line, this.x, this.y + i * (this.size + 2))
-    })
+    const lines = this._lines
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], this.x, this.y + i * (this.size + 2))
+    }
     ctx.restore()
   }
 }

@@ -347,8 +347,21 @@ export default function GameCanvas() {
             cursor: loading.ready ? 'pointer' : 'default',
           }}
         >
+          {/* Logo lives in public/, so reference it by static URL — no need to
+              wait on the AssetLoader (the splash shows before assets finish). On
+              load error, fall back to the wordmark text. */}
+          <img
+            src="/sprites/ui_logo.png"
+            alt="Kejar Kos Impian"
+            style={{ width: '70%', maxWidth: 280, height: 'auto', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+              e.currentTarget.nextSibling.style.display = 'block'
+            }}
+          />
           <div
             style={{
+              display: 'none',
               fontFamily: 'monospace',
               fontSize: 26,
               fontWeight: 700,

@@ -181,6 +181,9 @@ export default function GameCanvas() {
   const pressAction = useCallback((code, e) => {
     e.preventDefault()
     e.stopPropagation()
+    // These taps stopPropagation, so they never reach the container's handleTap
+    // unlock — unlock here too so the first in-play action wakes the audio ctx.
+    gameRef.current?.audio?.unlock()
     gameRef.current?.input.pressVirtual(code)
     if (code === 'Button:Throw') setSandals((n) => Math.max(0, n - 1))
   }, [])
@@ -190,6 +193,7 @@ export default function GameCanvas() {
   const holdAction = useCallback((code, e) => {
     e.preventDefault()
     e.stopPropagation()
+    gameRef.current?.audio?.unlock()
     gameRef.current?.input.holdVirtual(code)
   }, [])
 
@@ -200,6 +204,7 @@ export default function GameCanvas() {
   }, [])
 
   const playMenuTap = useCallback(() => {
+    gameRef.current?.audio?.unlock()
     gameRef.current?.audio?._playSample('sfx:menu_tap', 0.8)
   }, [])
 
@@ -269,6 +274,9 @@ export default function GameCanvas() {
   }, [])
 
   const handleTap = useCallback((e) => {
+    // First gesture unlocks the Web Audio context (suspended until then), so the
+    // home music + SFX start playing instead of staying silent. Idempotent.
+    gameRef.current?.audio?.unlock()
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()

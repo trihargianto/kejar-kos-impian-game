@@ -39,6 +39,22 @@ export class AudioSystem {
     this._preloadSfx()
   }
 
+  // Resume Howler's Web Audio context. Browsers create it suspended until a user
+  // gesture, so the first sounds (incl. home-screen music) stay silent until
+  // this runs. Howler auto-unlocks on document touch/click, but the game's own
+  // taps call preventDefault/stopPropagation on the buttons, which can swallow
+  // that gesture — so we unlock explicitly from the shell's first interaction.
+  // Idempotent + safe to call every tap.
+  unlock() {
+    const ctx = Howler.ctx
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+    // If home music was requested while suspended, Howler may have dropped the
+    // play; re-issue it now that the context is live.
+    if (this._musicId && this._music && !this._music.playing(this._musicVoice)) {
+      this._musicVoice = this._music.play()
+    }
+  }
+
   // Build every one-shot Howl up front so the clip's buffer decodes at boot, not
   // on its first in-game trigger (which would hitch the frame that fires it).
   // Music ('music:*') is skipped — it's a streamed loop, started on scene-enter.

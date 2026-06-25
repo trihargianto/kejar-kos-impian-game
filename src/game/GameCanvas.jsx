@@ -236,6 +236,16 @@ export default function GameCanvas() {
     setSettings({ hasActiveRun: true })
   }, [playMenuTap])
 
+  const openTutorialFromPause = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    playMenuTap()
+    // Replay the intro carousel ON TOP of the frozen run (z-index 35 > pause's
+    // 10). firstTime:false → the dismiss button reads "Tutup" and sets no flag;
+    // closing it returns to the still-paused pause menu underneath.
+    setTutorial({ key: 'intro', firstTime: false })
+  }, [playMenuTap])
+
   const exitToHome = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -503,6 +513,7 @@ export default function GameCanvas() {
             JEDA
           </div>
           <MenuButton label="▶ Resume" primary onPress={resumeGame} />
+          <MenuButton label="❓ Cara Main" onPress={openTutorialFromPause} />
           <MenuButton label="⚙ Pengaturan" onPress={openSettingsFromPause} />
           <MenuButton label="✕ Keluar" onPress={exitToHome} />
         </div>

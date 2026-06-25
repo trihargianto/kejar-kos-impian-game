@@ -111,16 +111,30 @@ function TutorialCarousel({ slides, dismissLabel, onDismiss, playMenuTap }) {
   )
 
   const slide = slides[i]
-  const footer =
+  // Footer row: a "← Sebelumnya" back button (from the 2nd slide on) sits beside
+  // the primary CTA ("Lanjut →" mid-carousel, the dismiss label on the last).
+  // The primary flex-grows to fill the row; back stays its content width.
+  const primaryStyle = { ...dismissStyle, flex: 1, marginTop: 0 }
+  const primary =
     i < last ? (
-      <button type="button" onPointerDown={() => go(i + 1)} style={dismissStyle}>
+      <button type="button" onPointerDown={() => go(i + 1)} style={primaryStyle}>
         Lanjut →
       </button>
     ) : (
-      <button type="button" onPointerDown={onDismiss} style={dismissStyle}>
+      <button type="button" onPointerDown={onDismiss} style={primaryStyle}>
         {dismissLabel}
       </button>
     )
+  const footer = (
+    <div style={footerRowStyle}>
+      {i > 0 && (
+        <button type="button" onPointerDown={() => go(i - 1)} style={backStyle}>
+          ← Sebelumnya
+        </button>
+      )}
+      {primary}
+    </div>
+  )
 
   return (
     <div
@@ -212,6 +226,27 @@ const dismissStyle = {
   borderRadius: 24,
   border: 'none',
   background: '#e74c3c',
+  color: '#fff',
+  fontWeight: 'bold',
+  fontSize: 15,
+  fontFamily: 'sans-serif',
+  touchAction: 'none',
+}
+
+const footerRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  width: '100%',
+  maxWidth: 320,
+}
+
+const backStyle = {
+  flexShrink: 0,
+  padding: '14px 18px',
+  borderRadius: 24,
+  border: '2px solid rgba(255,255,255,0.5)',
+  background: 'transparent',
   color: '#fff',
   fontWeight: 'bold',
   fontSize: 15,

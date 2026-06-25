@@ -51,6 +51,41 @@ export class AudioSystem {
     }
   }
 
+  // Resolves once every preloaded SFX has finished loading (or errored), so the
+  // boot loading screen can wait on audio too. `onUnit` fires once per clip as
+  // it settles. Music is excluded (streamed, started later) so the bar isn't
+  // held by a long track download. Returns { total, promise }.
+  whenSfxLoaded(onUnit = null) {
+    const ids = Object.keys(MANIFEST.audio ?? {}).filter((id) => !id.startsWith('music:'))
+    const total = ids.length
+    if (total === 0) return { total: 0, promise: Promise.resolve() }
+
+    const promise = Promise.all(
+      ids.map(
+        (id) =>
+          new Promise((resolve) => {
+            const h = this._howl(id)
+            if (!h) {
+              onUnit?.()
+              return resolve()
+            }
+            // Already loaded (e.g. cached) → settle now; else wait for the event.
+            if (h.state() === 'loaded') {
+              onUnit?.()
+              return resolve()
+            }
+            const settle = () => {
+              onUnit?.()
+              resolve()
+            }
+            h.once('load', settle)
+            h.once('loaderror', settle)
+          }),
+      ),
+    )
+    return { total, promise }
+  }
+
   // Lazily build (and cache) the Howl for an audio id. `loop` clips (music) are
   // streamed via html5 so they don't tie up a Web Audio buffer for their whole
   // length; short SFX use the default Web Audio path for low-latency pooling.

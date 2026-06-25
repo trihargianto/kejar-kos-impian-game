@@ -40,6 +40,9 @@ export default function GameCanvas() {
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
+  // Boot loading overlay: covers the canvas until all images + SFX are cached so
+  // the player never sees sprites pop in. done=true reveals the game.
+  const [loading, setLoading] = useState({ loaded: 0, total: 0, done: false })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -112,6 +115,17 @@ export default function GameCanvas() {
       }),
     ]
 
+    // Boot loading screen: mirror the game's asset progress, then reveal once
+    // everything is cached. The loop is already running behind the overlay, so
+    // the start screen is fully painted (with real art) the moment it lifts.
+    game.onAssetProgress = (loaded, total) =>
+      setLoading((l) => (l.done ? l : { loaded, total, done: false }))
+    game.assetsReady.then(() => setLoading((l) => ({ ...l, done: true })))
+    // Safety net: never trap the player behind the overlay if a fetch hangs
+    // (offline asset, flaky CDN). The game is already playable with placeholders,
+    // so reveal it after 8s regardless and let assets keep streaming in.
+    const loadGuard = setTimeout(() => setLoading((l) => ({ ...l, done: true })), 8000)
+
     // Intro (first launch only): the Game constructor already entered the
     // 'start' scene before these listeners were attached, so check directly
     // rather than relying on the first SCENE_CHANGE. No pause needed — there's
@@ -152,6 +166,7 @@ export default function GameCanvas() {
 
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(loadGuard)
       ro.disconnect()
       offs.forEach((off) => off())
       game.destroy()
@@ -276,6 +291,70 @@ export default function GameCanvas() {
         ref={canvasRef}
         style={{ display: 'block', width: '100%', height: '100%' }}
       />
+
+      {/* Boot loading overlay — covers the canvas until every image + SFX is
+          cached, so the start screen lifts straight to its real art with no
+          sprite-pop. Fades out on done; pointerEvents block taps underneath. */}
+      {!loading.done && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 22,
+            background: '#1a1a2e',
+            color: '#fff',
+            userSelect: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 26,
+              fontWeight: 700,
+              letterSpacing: 1,
+              color: '#f1c40f',
+              textAlign: 'center',
+              lineHeight: 1.3,
+            }}
+          >
+            KEJAR KOS
+            <br />
+            IMPIAN
+          </div>
+
+          {/* Progress track + fill (flexbox, no grid). */}
+          <div
+            style={{
+              width: '60%',
+              maxWidth: 240,
+              height: 8,
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.14)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${loading.total ? Math.round((loading.loaded / loading.total) * 100) : 0}%`,
+                background: '#f1c40f',
+                borderRadius: 4,
+                transition: 'width 0.18s ease-out',
+              }}
+            />
+          </div>
+
+          <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#aaa' }}>
+            Memuat{loading.total ? ` ${loading.loaded}/${loading.total}` : '…'}
+          </div>
+        </div>
+      )}
+
       {ripples.map((r) => (
         <div
           key={r.id}

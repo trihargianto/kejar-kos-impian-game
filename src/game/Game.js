@@ -25,12 +25,16 @@ export class Game {
     this.shake = new Shake()
     this.events = new EventBus()
     this.assets = new AssetLoader()
-    // Fire-and-forget: sprites stream in while the loop already runs. Until an
-    // image is cached, entities fall back to placeholder rendering, then swap
-    // automatically once it lands (GDD §XVI Step 4 — non-blocking swap).
-    this.assets.load(MANIFEST)
     // SFX subscribes to the event bus; placeholder WebAudio synth until Step 4.
     this.audio = new AudioSystem(this.events, this.assets)
+    // Asset loading progress for the boot loading screen. The game loop still
+    // runs immediately (entities fall back to placeholders), but the React shell
+    // holds a loading overlay over the canvas until `assetsReady` resolves, so
+    // the player never sees sprites pop in. Images + SFX are counted together;
+    // `onAssetProgress` is invoked with (loaded, total) as each unit settles.
+    this.onAssetProgress = null
+    this.assetProgress = { loaded: 0, total: 0 }
+    this.assetsReady = this._loadAssets()
     this.floats = []
     this.lastDist = 0
     this.lastCoins = 0
@@ -59,6 +63,24 @@ export class Game {
     this._loop = this._loop.bind(this)
     this._scenes.go('start')
     this._raf = requestAnimationFrame(this._loop)
+  }
+
+  // Kick off image + SFX loading and aggregate both into one progress signal.
+  // Resolves when everything is cached (or has errored — a failed unit still
+  // counts so the bar can't stall). Entities/audio degrade gracefully meanwhile.
+  async _loadAssets() {
+    const imgTotal = AssetLoader.imageCount(MANIFEST)
+    const { total: audioTotal, promise: audioDone } = this.audio.whenSfxLoaded(() => this._tickAsset())
+    this.assetProgress = { loaded: 0, total: imgTotal + audioTotal }
+    this.onAssetProgress?.(0, this.assetProgress.total)
+
+    await Promise.all([this.assets.load(MANIFEST, () => this._tickAsset()), audioDone])
+  }
+
+  _tickAsset() {
+    const p = this.assetProgress
+    p.loaded = Math.min(p.total, p.loaded + 1)
+    this.onAssetProgress?.(p.loaded, p.total)
   }
 
   // Recompute CSS-pixel dims + the floor line from the canvas size, and rescale

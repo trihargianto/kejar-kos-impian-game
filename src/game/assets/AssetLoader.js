@@ -24,18 +24,25 @@ export class AssetLoader {
     this._audio = new Map()
   }
 
-  async load(manifest = { images: {}, audio: {} }) {
+  // Load all images. `onUnit` is called once per image as it settles (loaded or
+  // failed) so a loading screen can show progress; audio is loaded + counted
+  // separately by AudioSystem (Howler), which the caller aggregates with this.
+  async load(manifest = { images: {}, audio: {} }, onUnit = null) {
     const imgPromises = Object.entries(manifest.images || {}).map(
       ([id, src]) =>
         new Promise((resolve) => {
           const img = new Image()
+          const done = () => {
+            onUnit?.()
+            resolve()
+          }
           img.onload = () => {
             this._images.set(id, img)
-            resolve()
+            done()
           }
           img.onerror = () => {
             console.warn(`[AssetLoader] failed to load image: ${src}`)
-            resolve()
+            done()
           }
           img.src = src
         }),
@@ -44,12 +51,17 @@ export class AssetLoader {
     // Audio playback is owned by AudioSystem (Howler), which loads clips by URL
     // from the manifest directly. We still record the id→src map here so has()/
     // audio() keep answering for non-playback callers and tests.
-    const audioPromises = Object.entries(manifest.audio || {}).map(([id, src]) => {
+    for (const [id, src] of Object.entries(manifest.audio || {})) {
       this._audio.set(id, src)
-      return Promise.resolve()
-    })
+    }
 
-    await Promise.all([...imgPromises, ...audioPromises])
+    await Promise.all(imgPromises)
+  }
+
+  // Number of image entries in a manifest — the loading screen uses this for the
+  // image portion of the progress total.
+  static imageCount(manifest = { images: {} }) {
+    return Object.keys(manifest.images || {}).length
   }
 
   image(id) {

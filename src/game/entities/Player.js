@@ -43,6 +43,12 @@ const SNAP_BACK_TIME = 0.22
 // instantly. This tail keeps them safe just long enough to clear it. Distinct
 // from the hit i-frame (invTimer): no blink, and near-miss still fires.
 const DASH_GRACE_TIME = 0.15
+// Dash input buffer. A dash pressed while it can't fire yet — mid-dash, during
+// snap-back, or a hair before the cooldown ends — is remembered this long and
+// auto-fires the moment a dash becomes possible. Without it, a dash queued right
+// after a jump (or right after a previous dash) was silently dropped, which read
+// as "jump-then-dash sometimes doesn't work".
+const DASH_BUFFER_TIME = 0.18
 
 // ─── Player state definitions ────────────────────────────────────────────────
 // Each state receives `p` (the Player instance) as ctx.
@@ -95,6 +101,9 @@ function runningState() {
       applyGravity(dt, p)
       applyDashCooldown(dt, p)
       applyInvincibility(dt, p)
+      // Fire a buffered dash now that the cooldown may have cleared (e.g. a dash
+      // pressed right after a jump, while a previous dash was still cooling).
+      p._tryBufferedDash()
       // Consume a queued air-slide on the frame the player lands naturally.
       // No y-snap: gravity already brought them to the floor, so the landing
       // reads smoothly and the slide starts from the running contact point.
@@ -276,6 +285,7 @@ function applyGravity(dt, p) {
 function applyDashCooldown(dt, p) {
   if (p.dashCd > 0) p.dashCd -= dt
   if (p._dashGraceTimer > 0) p._dashGraceTimer -= dt
+  if (p._dashBuffer > 0) p._dashBuffer -= dt
 }
 
 function applyInvincibility(dt, p) {
@@ -298,6 +308,7 @@ export class Player {
     this.dashCd = 0
     this.invTimer = 0
     this._dashGraceTimer = 0 // post-snap-back collision grace (see DASH_GRACE_TIME)
+    this._dashBuffer = 0 // pending dash request (see DASH_BUFFER_TIME)
     this.friction = 1 // <1 = lantai licin (kasta twist); set by the scene each frame
     this.worldSpeed = 0 // current world scroll speed (px/s); set by the scene each frame
     // Power-ups (GDD §VII)
@@ -362,6 +373,7 @@ export class Player {
     this.dashCd = 0
     this.invTimer = 0
     this._dashGraceTimer = 0
+    this._dashBuffer = 0
     this.friction = 1
     this.boostTimer = 0
     this.sandals = 0
@@ -445,8 +457,23 @@ export class Player {
   }
 
   dash() {
-    this.fsm.send('intent:dash')
+    // Buffer the request, then try to fire it now. If the current state can't
+    // dash yet (mid-dash / snap-back / cooldown), the buffer keeps it alive and
+    // _tryBufferedDash fires it on the first frame it becomes possible.
+    this._dashBuffer = DASH_BUFFER_TIME
+    this._tryBufferedDash()
     return this._drainFloats()
+  }
+
+  // Fire a buffered dash if one is pending and a dash can actually start now
+  // (grounded or airborne is fine — only cooldown gates it). Called from dash()
+  // and every frame from the running state's update so a queued dash lands as
+  // soon as snap-back ends or the cooldown clears.
+  _tryBufferedDash() {
+    if (this._dashBuffer <= 0 || this.dashCd > 0) return
+    if (this.dashing || this.snappingBack) return
+    this._dashBuffer = 0
+    this.fsm.send('intent:dash')
   }
 
   hit(invDuration) {
@@ -493,22 +520,35 @@ export class Player {
     let spriteId = 'player:run'
     if (this.sliding) spriteId = 'player:slide'
     else if (hurting && assets?.has('player:hurt')) spriteId = 'player:hurt'
+    else if (this.dashing && assets?.has('player:dash')) spriteId = 'player:dash'
     else if (!this.grounded && assets?.has('player:jump')) spriteId = 'player:jump'
     const sprite = assets?.has(spriteId) ? assets.image(spriteId) : null
+    // The dash sprite is a wide horizontal pose (2:1), like slide — draw it
+    // height-scaled extending backward, not squeezed into the upright hitbox.
+    const wideDash = this.dashing && spriteId === 'player:dash'
 
     // Kopi Sachet boost FX — a warm pulsing aura + horizontal speed lines behind
     // the player (GDD §VII passive / §XIII speed-line feel). Drawn first so the
     // sprite/placeholder sits on top. Telegraphs "ngebut + imun".
     if (this.boosting) this._drawBoostFx(ctx, S, h, drawY)
 
+    // Dash draw rect: for the wide pose, use the run-matched scale (see
+    // _dashRect) so BOTH the echo and the main sprite share one size — the echo
+    // was still using the old oversized height-fit rect.
+    const dashRect = wideDash ? this._dashRect(sprite, drawY, h) : null
+
     if (visible) {
       // Dash echo: faint trailing copies behind the player to sell the burst.
       if (this.dashing) {
+        const dw = dashRect ? dashRect.w : this.w
+        const dh = dashRect ? dashRect.h : h
+        const dx = dashRect ? dashRect.x : this.x
+        const dy = dashRect ? dashRect.y : drawY
         ctx.save()
         for (let i = 1; i <= 3; i++) {
           ctx.globalAlpha = 0.3 - i * 0.08
-          const ex = this.x - i * Math.round(14 * S)
-          if (sprite) ctx.drawImage(sprite, ex, drawY, this.w, h)
+          const ex = dx - i * Math.round(14 * S)
+          if (sprite) ctx.drawImage(sprite, ex, dy, dw, dh)
           else {
             ctx.fillStyle = COLORS.player
             roundRect(ctx, ex, drawY + Math.round(4 * S), this.w, h - Math.round(8 * S), Math.round(5 * S))
@@ -517,7 +557,9 @@ export class Player {
         ctx.restore()
       }
 
-      if (sprite && this.sliding) {
+      if (sprite && dashRect) {
+        ctx.drawImage(sprite, dashRect.x, dashRect.y, dashRect.w, dashRect.h)
+      } else if (sprite && this.sliding) {
         this._drawSlideSprite(ctx, sprite, drawY, h)
       } else if (sprite) {
         this._drawRunnerSprite(ctx, sprite, drawY, h)
@@ -584,6 +626,26 @@ export class Player {
     const drawW = h * ratio
     const rightX = this.x + this.w // pin the front of the slide to the hitbox right
     ctx.drawImage(sprite, rightX - drawW, drawY, drawW, h)
+  }
+
+  // Dash is a wide lunge pose (2:1). Scaling it to the full upright hitbox height
+  // makes the figure read much bigger than the run (its width balloons to ~2×h).
+  // Instead, match the dash figure's visual HEIGHT to the run, then let width
+  // follow the ratio — so the player keeps the same size and just stretches into
+  // a forward lunge. Pinned to the feet (floor) and centered on the hitbox so the
+  // reach extends evenly fore/aft instead of shoving the body off to one side.
+  // Geometry for the dash sprite, shared by the main draw and the echo trail so
+  // they're always the same size. Rendered at the SAME on-screen scale as the
+  // run (scale = h / runSprite.height) and kept at the image's native ratio, so
+  // the character doesn't balloon. Centered on the hitbox, pinned to the feet.
+  _dashRect(sprite, drawY, h) {
+    const runSprite = this.game.assets?.image?.('player:run')
+    const scale = runSprite ? h / runSprite.height : h / sprite.height
+    const w = sprite.width * scale
+    const drawH = sprite.height * scale
+    const cx = this.x + this.w / 2
+    const feetY = drawY + h
+    return { x: cx - w / 2, y: feetY - drawH, w, h: drawH }
   }
 
   // Draw the sprite with a procedural run cycle so the single static frame reads

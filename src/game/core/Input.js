@@ -12,6 +12,13 @@ export class Input {
     // silently eat the second tap (the "double jump sometimes doesn't fire"
     // bug). Counting lets the scene consume each tap as its own action.
     this._pressCount = {}
+    // A timestamp (ms) before which canvas Tap edges are ignored. React menu
+    // buttons (retry/exit on game-over) set this when pressed: navigating away
+    // unmounts their overlay, so the gesture's COMPATIBILITY mouse events land
+    // on the canvas underneath and would otherwise register a stray Tap that the
+    // next scene consumes as a confirm (Keluar bouncing back into play). The
+    // window covers that synthesized-event tail.
+    this._suppressTapUntil = 0
 
     this._onKeyDown = (e) => {
       // Ignore auto-repeat: a held key must not machine-gun jumps.
@@ -33,6 +40,7 @@ export class Input {
     // flush alongside the edge, so a tap is consumed exactly once.
     this._onTouchStart = (e) => {
       e.preventDefault() // block page scroll/zoom on the canvas
+      if (this._tapSuppressed()) return
       const rect = this._canvas.getBoundingClientRect()
       const t = e.touches?.[0]
       if (t) this._tapPos = { x: t.clientX - rect.left, y: t.clientY - rect.top }
@@ -40,6 +48,7 @@ export class Input {
     }
 
     this._onMouseDown = (e) => {
+      if (this._tapSuppressed()) return
       const rect = this._canvas.getBoundingClientRect()
       this._tapPos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
       this._justPressed.Tap = true
@@ -51,6 +60,20 @@ export class Input {
     canvas.addEventListener('mousedown', this._onMouseDown)
 
     this._canvas = canvas
+  }
+
+  // True while a recent menu-button press is still suppressing canvas taps (the
+  // synthesized compatibility-event window after that press).
+  _tapSuppressed() {
+    return performance.now() < this._suppressTapUntil
+  }
+
+  // Called by a React menu button (game-over retry/exit) right before it
+  // navigates and unmounts its overlay. Ignores canvas Tap edges for a brief
+  // window so the gesture's synthesized mouse/click events — which now fall
+  // through to the canvas — don't register as a confirm in the next scene.
+  suppressTaps(ms = 600) {
+    this._suppressTapUntil = performance.now() + ms
   }
 
   // Inject a one-frame "just pressed" edge from an on-screen button. One edge

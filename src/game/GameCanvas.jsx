@@ -334,11 +334,23 @@ export default function GameCanvas() {
     [playMenuTap]
   )
 
+  // These buttons fire on React's pointerdown and synchronously navigate, which
+  // unmounts this game-over overlay. The browser then dispatches the gesture's
+  // COMPATIBILITY mouse events (mousedown/click) — and with the overlay gone,
+  // they land on the canvas underneath, whose engine Input listener turns the
+  // mousedown into a `Tap` edge. The scene we just navigated to consumes that
+  // Tap as a confirm: Keluar → 'start', then the leaked Tap hits the start
+  // screen's Play hit-test and bounces straight back into the game.
+  //
+  // suppressTaps() tells Input to ignore canvas Tap edges for a short window,
+  // covering that synthesized-event tail — deterministic, unlike a deferred
+  // flush racing the game loop's per-frame flush.
   const retryGame = useCallback(
     (e) => {
       e.preventDefault()
       e.stopPropagation()
       playMenuTap()
+      gameRef.current?.input?.suppressTaps()
       gameRef.current?.go('play')
     },
     [playMenuTap]
@@ -349,6 +361,7 @@ export default function GameCanvas() {
       e.preventDefault()
       e.stopPropagation()
       playMenuTap()
+      gameRef.current?.input?.suppressTaps()
       gameRef.current?.go('start')
     },
     [playMenuTap]

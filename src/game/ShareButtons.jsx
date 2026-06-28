@@ -13,7 +13,7 @@ import { getRank } from './systems/score.js'
 // Pinned to the top safe area, clear of the reveal card + chips + retry prompt
 // the scene draws lower. Every handler stopPropagation so a tap here doesn't
 // fall through to the container's tap-to-retry.
-export function ShareButtons({ result, top = '47%' }) {
+export function ShareButtons({ result }) {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
 
@@ -41,7 +41,7 @@ export function ShareButtons({ result, top = '47%' }) {
       setBusy(true)
       setNote(null)
       try {
-        const { blob, dataUrl } = await generateShareImage({
+        const { blob } = await generateShareImage({
           dist: result.dist,
           score: result.score,
           dreamKos,
@@ -54,8 +54,7 @@ export function ShareButtons({ result, top = '47%' }) {
         } else if (navigator.share) {
           await navigator.share({ text: shareText, title: 'Kejar Kos Impian' })
         } else {
-          download(dataUrl)
-          setNote('Gambar diunduh — bagikan ke Story-mu!')
+          setNote('Browser tidak mendukung berbagi. Coba screenshot manual.')
         }
       } catch (err) {
         // AbortError = user cancelled the share sheet; not worth a message.
@@ -67,30 +66,6 @@ export function ShareButtons({ result, top = '47%' }) {
     [busy, result.dist, result.score, dreamKos, shareText]
   )
 
-  const onDownload = useCallback(
-    async (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (busy) return
-      setBusy(true)
-      setNote(null)
-      try {
-        const { dataUrl } = await generateShareImage({
-          dist: result.dist,
-          score: result.score,
-          dreamKos,
-        })
-        download(dataUrl)
-        setNote('Gambar tersimpan!')
-      } catch {
-        setNote('Gagal menyimpan gambar.')
-      } finally {
-        setBusy(false)
-      }
-    },
-    [busy, result.dist, result.score, dreamKos]
-  )
-
   const stop = useCallback((e) => e.stopPropagation(), [])
 
   return (
@@ -98,24 +73,16 @@ export function ShareButtons({ result, top = '47%' }) {
       onClick={stop}
       onTouchStart={stop}
       style={{
-        position: 'absolute',
-        top,
-        left: 0,
-        right: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: 8,
-        zIndex: 20,
         pointerEvents: 'none',
       }}
     >
       <div style={{ display: 'flex', gap: 10, pointerEvents: 'auto' }}>
         <ShareBtn onPress={onShare} disabled={busy} primary>
           {busy ? '…' : '📤 Bagikan'}
-        </ShareBtn>
-        <ShareBtn onPress={onDownload} disabled={busy}>
-          ⬇ Unduh
         </ShareBtn>
       </div>
       {note && (
@@ -166,11 +133,3 @@ function ShareBtn({ children, onPress, disabled, primary }) {
   )
 }
 
-function download(dataUrl) {
-  const a = document.createElement('a')
-  a.href = dataUrl
-  a.download = 'kejar-kos-impian.png'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-}

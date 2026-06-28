@@ -33,12 +33,13 @@ export function KosCard({ result, onOpen }) {
         <h2 style={headlineStyle}>
           Kamu dapat total koin <b style={{ color: '#f1c40f' }}>{rupiah(budget)}</b>
         </h2>
-        <h3 style={funFactStyle}>FUN FACT</h3> <br />
+        <h3 style={funFactStyle}>FUN FACT</h3>
+        <div style={{ height: 4 }} />
         {affordable ? (
           <>Seandainya kamu lagi nyari kos di mamikos.com, uang segitu bisa dapat kos di sini:</>
         ) : (
           <>
-            Sendainya kalau kamu lagi nyari kos di mamikos.com, tinggal nambahin{` `}
+            Tinggal nambahin{` `}
             <b>{rupiah(shortfall)}</b> lagi, kamu bisa dapat kos kaya gini loh:
           </>
         )}
@@ -54,13 +55,11 @@ export function KosCard({ result, onOpen }) {
         onClick={() => onOpen?.(kos)}
         style={cardStyle}
       >
-        {/* Photo + type badge */}
         <div style={photoStyle(kos.photo)}>
           {!kos.photo && <span style={photoFallbackIcon}>🏠</span>}
           <span style={badgeStyle}>{kos.type ?? 'Campur'}</span>
         </div>
 
-        {/* Body */}
         <div style={bodyStyle}>
           <div style={nameStyle}>{kos.name}</div>
           <div style={areaStyle}>{kos.area}</div>
@@ -79,32 +78,28 @@ export function KosCard({ result, onOpen }) {
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 const wrapStyle = {
-  position: 'absolute',
-  left: '50%',
-  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
-  transform: 'translateX(-50%)',
-  width: 'min(86%, 320px)',
+  width: '100%',
+  marginTop: 14,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: 10,
-  zIndex: 12,
-  pointerEvents: 'none', // only the card itself is interactive
+  gap: 6,
+  pointerEvents: 'none',
 }
 
 const leadStyle = {
   textAlign: 'center',
   fontFamily: 'sans-serif',
-  fontSize: 13,
-  lineHeight: 1.45,
+  fontSize: 12,
+  lineHeight: 1.35,
   color: 'rgba(255,255,255,0.85)',
 }
 
 const headlineStyle = {
-  margin: '0 0 18px',
-  fontSize: 18,
+  margin: '0 0 4px',
+  fontSize: 14,
   fontWeight: 800,
-  lineHeight: 1.3,
+  lineHeight: 1.2,
   color: '#fff',
 }
 
@@ -136,7 +131,7 @@ const cardStyle = {
 const photoStyle = (photo) => ({
   position: 'relative',
   width: '100%',
-  aspectRatio: '16 / 10',
+  aspectRatio: '21 / 9',
   background: photo
     ? `center / cover no-repeat url(${photo})`
     : 'linear-gradient(135deg, #cfe0f0, #9bbdd8)',
@@ -164,8 +159,8 @@ const badgeStyle = {
 const bodyStyle = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
-  padding: '12px 14px 14px',
+  gap: 2,
+  padding: '7px 12px 8px',
   fontFamily: 'sans-serif',
   textAlign: 'left',
 }
@@ -179,7 +174,7 @@ const nameStyle = {
   textOverflow: 'ellipsis',
 }
 
-const areaStyle = { fontSize: 15, fontWeight: 700 }
+const areaStyle = { fontSize: 13, fontWeight: 700 }
 
 const facStyle = {
   fontSize: 13,
@@ -191,11 +186,11 @@ const facStyle = {
 
 const ratingRow = { display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }
 
-const priceStyle = { fontSize: 17, fontWeight: 700, marginTop: 2 }
+const priceStyle = { fontSize: 15, fontWeight: 700, marginTop: 2 }
 
 const ctaStyle = {
-  marginTop: 4,
-  fontSize: 13,
+  marginTop: 2,
+  fontSize: 12,
   fontWeight: 700,
   color: '#e74c3c',
 }

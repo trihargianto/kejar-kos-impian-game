@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Game } from './Game.js'
+import { COLORS } from './theme.js'
 import { EVENTS } from './core/EventBus.js'
 import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
 import { KosCard } from './KosCard.jsx'
@@ -68,6 +69,7 @@ export default function GameCanvas() {
   // Height (CSS px) of the ground strip below the floor line. The button cluster
   // is confined to this band so it never overlaps the running area above it.
   const [groundH, setGroundH] = useState(0)
+  const [containerH, setContainerH] = useState(0)
   // Boot splash overlay. Doubles as the audio-gesture gate: browsers won't play
   // sound before a user gesture, so the splash waits for a tap and starts music
   // on that tap — the player never hears a silent-then-pops audio start.
@@ -136,6 +138,7 @@ export default function GameCanvas() {
     // sits at FLOOR_HEIGHT/GAME_HEIGHT of the way up from the bottom. That band
     // (in CSS px) is the only place buttons may live so they stay off the run.
     setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * cssH)
+    setContainerH(cssH)
 
     // First-pickup tutorial: pause the run + show the card the first time the
     // player collects this power-up. Already-seen → no-op (game keeps running).
@@ -220,6 +223,7 @@ export default function GameCanvas() {
       canvas.height = Math.round(ch * d)
       game.resize(d)
       setGroundH((FLOOR_HEIGHT / GAME_HEIGHT) * ch)
+      setContainerH(ch)
     }
     const ro = new ResizeObserver(refit)
     if (containerRef.current) ro.observe(containerRef.current)
@@ -326,6 +330,26 @@ export default function GameCanvas() {
       playMenuTap()
       game.setPaused(false)
       game.go('start')
+    },
+    [playMenuTap]
+  )
+
+  const retryGame = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      gameRef.current?.go('play')
+    },
+    [playMenuTap]
+  )
+
+  const exitFromGameOver = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      playMenuTap()
+      gameRef.current?.go('start')
     },
     [playMenuTap]
   )
@@ -522,16 +546,67 @@ export default function GameCanvas() {
         />
       ))}
 
-      {/* Share / download — game-over only. Anchored just below the canvas
-          "Rekor: xxx" line (~45% of height) and above the retry prompt, which
-          the scene draws lower. Buttons stopPropagation so a tap doesn't
-          trigger the container's tap-to-retry. */}
-      {gameOver && <ShareButtons result={gameOver} top="47%" />}
+      {/* Game-over overlay — ONE natural-flow scroll column, not rigid % bands.
+          The canvas draws the stats (GAME OVER / dist / rank / score) in the top
+          ~30%; this overlay reserves that zone with a spacer, then flows the
+          share button, retry/exit, and the full KosCard below it. The column
+          sizes to its content and scrolls only when the content is taller than
+          the frame (short screens) — so the card never crops, unlike the old
+          fixed 30%-tall card band. stopPropagation so taps don't fall through
+          to the canvas tap-to-retry. */}
+      {gameOver && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 12,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            // pointerEvents stay auto on the scroll container so it can be
+            // scrolled/dragged; the child controls opt back in to clicks and the
+            // spacer is inert (no content over the canvas stats).
+            pointerEvents: 'auto',
+            padding: '0 7% calc(env(safe-area-inset-bottom, 0px) + 10px)',
+            gap: 0,
+          }}
+        >
+          {/* Reserves the canvas stats zone (top ~20% of the frame) so the share
+              button starts just below the stat lines the canvas draws (end ~0.185).
+              Kept tight so the card has the most room and the player rarely scrolls.
+              TRANSPARENT — the canvas stats show through here; only the content
+              below gets a solid panel. Stays pointer-active so a drag begun over
+              the stats still scrolls. */}
+          <div style={{ height: '20%', flexShrink: 0 }} />
 
-      {/* Kos reveal card — game-over only. Clickable Mamikos-style listing card
-          that opens the listing in a new tab. Fills the lower half of the
-          game-over screen (the canvas leaves that area clear). */}
-      {gameOver && <KosCard result={gameOver} onOpen={() => playMenuTap()} />}
+          {/* Solid panel behind the controls + card so they don't read as
+              floating over the canvas text. Matches the canvas game-over bg.
+              Negative side margin + matching padding makes the panel span the
+              full frame width while the column itself keeps its 7% side gutters
+              for the spacer. marginTop adds a small gap below the stat line. */}
+          <div
+            style={{
+              alignSelf: 'stretch',
+              margin: '16px -7% 0',
+              padding: '10px 7% 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 8,
+              background: COLORS.gameoverBg,
+            }}
+          >
+            <ShareButtons result={gameOver} />
+            <GameOverActions onRetry={retryGame} onExit={exitFromGameOver} />
+            <KosCard result={gameOver} onOpen={() => playMenuTap()} />
+          </div>
+        </div>
+      )}
 
       {/* Settings overlay — opened from the start menu or the pause menu. Sits
           above everything (incl. the pause overlay) via its own z-index. */}
@@ -773,6 +848,54 @@ function ActionButton({
       )}
     </button>
   )
+}
+
+// Game-over action row — retry + exit buttons, flow child of the button band.
+function GameOverActions({ onRetry, onExit }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 12,
+        pointerEvents: 'auto',
+      }}
+    >
+      <button
+        type="button"
+        className="game-btn"
+        onPointerDown={onRetry}
+        style={actionBtnStyle(true)}
+      >
+        ↩ Coba Lagi
+      </button>
+      <button
+        type="button"
+        className="game-btn"
+        onPointerDown={onExit}
+        style={actionBtnStyle(false)}
+      >
+        ✕ Keluar
+      </button>
+    </div>
+  )
+}
+
+function actionBtnStyle(primary) {
+  return {
+    padding: '11px 20px',
+    borderRadius: 24,
+    border: primary ? 'none' : '2px solid rgba(255,255,255,0.5)',
+    background: primary ? '#e74c3c' : 'rgba(0,0,0,0.35)',
+    color: '#fff',
+    fontFamily: 'sans-serif',
+    fontWeight: 'bold',
+    fontSize: 16,
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTapHighlightColor: 'transparent',
+    touchAction: 'none',
+  }
 }
 
 // Pause-menu button — full-width pill. Primary (resume) is accent-filled; the

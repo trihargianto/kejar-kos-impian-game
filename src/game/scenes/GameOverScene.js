@@ -1,6 +1,5 @@
 // ─── Game over scene ──────────────────────────────────────────────────────────
-import { COLORS, FONTS, ctaPulse } from '../theme.js'
-import { INTENT } from '../core/Input.js'
+import { COLORS, FONTS } from '../theme.js'
 import { getRank, formatScore } from '../systems/score.js'
 import { submitScore } from '../systems/storage.js'
 import { EVENTS } from '../core/EventBus.js'
@@ -28,13 +27,6 @@ export class GameOverScene {
 
   update(dt) {
     this.time += dt
-
-    // Tap / confirm → retry. The kos card is a React overlay that stops its own
-    // pointer events, so a tap there opens the listing and never reaches here.
-    const input = this.game.input
-    if (input.anyPressed(INTENT.confirm)) {
-      this.game.go('play')
-    }
   }
 
   draw(ctx) {
@@ -43,50 +35,43 @@ export class GameOverScene {
     ctx.fillRect(0, 0, W, H)
     ctx.textAlign = 'center'
 
+    // Four stacked lines in the top zone; the rest is React overlays.
+    //   top    → GAME OVER (smaller than before)
+    //   rank   → rank title ("🥴 Pejuang Kos Pemula")
+    //   stats  → Skor · Rekor
+    //   jarak  → Jarak (own line below)
+    const title_y = 0.07
+    const rank_y  = 0.115
+    const stats_y = 0.15
+    const jarak_y = 0.185
+
+    // Top: GAME OVER, smaller.
     ctx.fillStyle = COLORS.gameoverTitle
-    ctx.font = `bold ${Math.round(44 * S)}px ${FONTS.mono}`
-    ctx.fillText('GAME OVER', W / 2, H * 0.15)
+    ctx.font = `bold ${Math.round(30 * S)}px ${FONTS.mono}`
+    ctx.fillText('GAME OVER', W / 2, H * title_y)
 
-    // Big jarak (m) — the iconic "how far did you get" number (rank/kasta axis).
-    ctx.fillStyle = COLORS.gameoverDist
-    ctx.font = `bold ${Math.round(28 * S)}px ${FONTS.mono}`
-    ctx.fillText(`${this.dist}m`, W / 2, H * 0.26)
+    // Middle: rank title. Gold on a new record so the achievement reads.
+    ctx.fillStyle = this.isNewRecord ? COLORS.gold : COLORS.gameoverRank
+    ctx.font = `bold ${Math.round(22 * S)}px ${FONTS.sans}`
+    ctx.fillText(getRank(this.dist), W / 2, H * rank_y)
 
-    ctx.fillStyle = COLORS.gameoverRank
-    ctx.font = `bold ${Math.round(20 * S)}px ${FONTS.sans}`
-    ctx.fillText(getRank(this.dist), W / 2, H * 0.33)
-
-    // Score (jarak × combo) — the persisted high-score axis. Show inline with
-    // the REKOR BARU flag so the comparison the player cares about is visual.
-    ctx.fillStyle = this.isNewRecord ? COLORS.gold : COLORS.white
-    ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
+    // Skor · Rekor on one line. Append ★ to the record on a new best so the
+    // player sees the comparison without a separate REKOR BARU line.
+    ctx.fillStyle = COLORS.white
+    ctx.font = `bold ${Math.round(14 * S)}px ${FONTS.mono}`
     ctx.fillText(
-      `SKOR ${formatScore(this.score)}${this.isNewRecord ? '  ★' : ''}`,
+      `Skor: ${formatScore(this.score)}  ·  ` +
+        `Rekor: ${formatScore(this.highScore)}${this.isNewRecord ? ' ★' : ''}`,
       W / 2,
-      H * 0.4
+      H * stats_y
     )
 
-    // The kos reveal card (budget + matched listing) is now a React overlay —
-    // KosCard.jsx — so it can be a clickable Mamikos link with a photo. It mounts
-    // over the lower half of this screen; leave that space clear here.
+    // Jarak on its own line below, dimmer so Skor/Rekor stay primary.
+    ctx.fillStyle = COLORS.faint
+    ctx.font = `bold ${Math.round(13 * S)}px ${FONTS.mono}`
+    ctx.fillText(`Jarak: ${this.dist}m`, W / 2, H * jarak_y)
 
-    // Record + retry sit ABOVE the React kos card (which fills the lower area).
-    if (this.isNewRecord) {
-      ctx.fillStyle = COLORS.gold
-      ctx.font = `bold ${Math.round(16 * S)}px ${FONTS.mono}`
-      ctx.fillText('★ REKOR BARU! ★', W / 2, H * 0.45)
-    } else {
-      ctx.fillStyle = COLORS.faint
-      ctx.font = `${Math.round(13 * S)}px ${FONTS.mono}`
-      ctx.fillText(`Rekor: ${formatScore(this.highScore)}`, W / 2, H * 0.45)
-    }
-
-    // Retry prompt sits below the React share buttons (anchored ~47%), so push
-    // it down to clear them.
-    ctx.globalAlpha = ctaPulse(this.time)
-    ctx.fillStyle = COLORS.white
-    ctx.font = `${Math.round(14 * S)}px ${FONTS.sans}`
-    ctx.fillText('Tap / Spasi untuk coba lagi', W / 2, H * 0.56)
-    ctx.globalAlpha = 1
+    // Below this: share button, retry/exit, and the kos reveal card are all
+    // React overlays (GameCanvas.jsx / KosCard.jsx) — leave that space clear.
   }
 }

@@ -31,27 +31,24 @@ export function TutorialOverlay({ data, firstTime = true, onDismiss, playMenuTap
   )
 }
 
-// Media slot — fixed aspect ratio so layout is stable whether a video is present
-// or not. Real video autoplays muted+looped+inline (the only combo browsers
-// allow to autoplay on mobile); the placeholder fills the same box.
+// Media slot — only rendered once a video path is supplied. Until then the slot
+// is omitted entirely (no placeholder box), so a slide without a clip is just
+// title + body. The <video> loads lazily from its own src — it's never fed to
+// the AssetLoader, so missing/late clips never block the boot progress bar.
+// Real video autoplays muted+looped+inline (the only combo browsers allow to
+// autoplay on mobile).
 function TutorialMedia({ media }) {
+  if (!media) return null
   return (
     <div style={mediaBoxStyle}>
-      {media ? (
-        <video
-          src={media}
-          muted
-          loop
-          playsInline
-          autoPlay
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      ) : (
-        <div style={mediaPlaceholderStyle}>
-          <div style={{ fontSize: 30, opacity: 0.7 }}>▶</div>
-          <div style={{ fontSize: 12, opacity: 0.6, fontFamily: 'monospace' }}>Video menyusul</div>
-        </div>
-      )}
+      <video
+        src={media}
+        muted
+        loop
+        playsInline
+        autoPlay
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
     </div>
   )
 }
@@ -198,16 +195,6 @@ const mediaBoxStyle = {
   overflow: 'hidden',
   background: 'rgba(0,0,0,0.45)',
   border: '1px solid rgba(255,255,255,0.12)',
-}
-
-const mediaPlaceholderStyle = {
-  width: '100%',
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
 }
 
 const bodyStyle = {

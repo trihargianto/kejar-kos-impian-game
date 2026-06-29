@@ -24,34 +24,34 @@ export const TUTORIALS = Object.freeze({
         title: 'KEJAR KOS IMPIAN',
         body: [
           'Sprint menuju kos impianmu!',
-          'Kos lama (Ibu Kos + tagihan) berusaha menarikmu balik — jangan kasih kendor.',
+          'Tugasmu adalah lari sejauh mungkin dan kumpulkan koin untuk mengejar Kos Impianmu',
         ],
       },
       {
-        media: null,
+        media: '/tutorials/intro-jump.mp4',
         title: '▶ JUMP',
-        body: ['Lompat untuk melewati ember & kucing di lantai.'],
+        body: ['Tekan "JUMP" untuk lompat melewati ember & kucing di lantai.'],
       },
       {
-        media: null,
+        media: '/tutorials/intro-double-jump.mp4',
         title: '▶▶ DOUBLE JUMP',
-        body: ['Tekan JUMP sekali lagi di udara untuk lompatan kedua — jangkau rintangan lebih tinggi.'],
+        body: ['Tekan "JUMP" sekali lagi di udara untuk jangkau rintangan lebih tinggi.'],
       },
       {
-        media: null,
+        media: '/tutorials/intro-slide.mp4',
         title: '⬇ SLIDE',
-        body: ['Nunduk untuk lolos dari jemuran & barang terbang.'],
+        body: ['Tekan "SLIDE" untuk nunduk supaya lolos dari jemuran & barang terbang.'],
       },
       {
-        media: null,
+        media: '/tutorials/intro-dash.mp4',
         title: '⚡ DASH',
-        body: ['Terjang ke depan untuk menjebol pintu yang bisa dihancurkan.'],
+        body: ['Tekan "DASH" untuk mendobrak pintu yang bisa dihancurkan.'],
       },
     ],
   },
   sandal: {
     type: 'card',
-    media: null,
+    media: '/tutorials/sandal.mp4',
     title: '🩴 SANDAL JEPIT',
     body: [
       'Senjata pamungkas anak kos!',
@@ -61,7 +61,7 @@ export const TUTORIALS = Object.freeze({
   },
   kopi: {
     type: 'card',
-    media: null,
+    media: '/tutorials/kopi.mp4',
     title: '☕ KOPI SACHET',
     body: [
       'Langsung nyala begitu dipungut!',

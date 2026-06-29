@@ -190,7 +190,7 @@ const cardStyle = {
 const mediaBoxStyle = {
   width: '100%',
   maxWidth: 320,
-  aspectRatio: '16 / 9',
+  aspectRatio: '4 / 5',
   borderRadius: 14,
   overflow: 'hidden',
   background: 'rgba(0,0,0,0.45)',

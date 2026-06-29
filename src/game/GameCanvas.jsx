@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Game } from './Game.js'
 import { COLORS } from './theme.js'
 import { EVENTS } from './core/EventBus.js'
-import { GAME_HEIGHT, FLOOR_HEIGHT } from './constants.js'
+import { GAME_HEIGHT, FLOOR_HEIGHT, INVINCIBLE_TIME } from './constants.js'
 import { KosCard } from './KosCard.jsx'
 import { ShareButtons } from './ShareButtons.jsx'
 import { SettingsPanel } from './SettingsPanel.jsx'
@@ -145,6 +145,7 @@ export default function GameCanvas() {
     const maybeShowTutorial = (key) => {
       if (seen(key)) return
       game.setPaused(true)
+      game.audio?.pauseMusic()
       setTutorial({ key, firstTime: true })
     }
 
@@ -392,7 +393,13 @@ export default function GameCanvas() {
   const dismissTutorial = useCallback((key) => {
     markSeen(key)
     setTutorial(null)
-    if (key === 'kopi' || key === 'sandal') gameRef.current?.setPaused(false)
+    if (key === 'kopi' || key === 'sandal') {
+      const game = gameRef.current
+      const scene = game?._scenes?.current
+      scene?.player?.hit(INVINCIBLE_TIME * 2)
+      game?.audio?.resumeMusic()
+      game?.setPaused(false)
+    }
   }, [])
 
   // Enter from the splash. This tap/keypress is the user gesture browsers

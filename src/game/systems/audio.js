@@ -326,6 +326,16 @@ export class AudioSystem {
     this._musicVoice = null
   }
 
+  pauseMusic() {
+    if (!this._music) return
+    this._music.pause(this._musicVoice)
+  }
+
+  resumeMusic() {
+    if (!this._music) return
+    if (!this._music.playing(this._musicVoice)) this._musicVoice = this._music.play()
+  }
+
   setEnabled(on) {
     this.enabled = !!on
     // One switch silences everything Howler owns (music + any live one-shots).

@@ -46,6 +46,7 @@ export const MANIFEST = {
     'sfx:crash': 'audio/sfx_crash.mp3',
     'sfx:punch': 'audio/sfx_punch.mp3',
     'sfx:hit': 'audio/sfx_hit.mp3',
+    'sfx:heart': 'audio/sfx_heart.mp3',
     'sfx:coin': 'audio/sfx_coin.mp3',
     'sfx:dash': 'audio/sfx_dash.mp3',
     'sfx:slide': 'audio/sfx_slide.mp3',

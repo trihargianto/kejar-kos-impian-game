@@ -35,11 +35,12 @@ export function KosCard({ result, onOpen }) {
         </h2>
         <h3 style={funFactStyle}>FUN FACT</h3>
         <div style={{ height: 4 }} />
+        Seandainya kamu lagi nyari kos di mamikos.com, <br />
         {affordable ? (
-          <>Seandainya kamu lagi nyari kos di mamikos.com, uang segitu bisa dapat kos di sini:</>
+          <>uang segitu bisa dapat kos kaya sini loh:</>
         ) : (
           <>
-            Tinggal nambahin{` `}
+            nambahin{` `}
             <b>{rupiah(shortfall)}</b> lagi, kamu bisa dapat kos kaya gini loh:
           </>
         )}

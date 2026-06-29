@@ -34,8 +34,8 @@ export const REVEAL_CHIPS = Object.freeze(
 //   - a short run (~20-30 coins) lands ~300-500k
 //   - a strong run (~250+ coins) approaches the 2jt cap
 //   - a 0-coin run falls back to the floor (300k) and the cheapest listing
-export const BUDGET_FLOOR = 300_000
-export const BUDGET_CEIL = 2_000_000
+export const BUDGET_FLOOR = 500_000
+export const BUDGET_CEIL = 3_000_000
 export const RUPIAH_PER_COIN = 6000
 
 export function budgetFromCoins(coins) {
@@ -47,22 +47,15 @@ export function budgetFromCoins(coins) {
 // eligible only if its tier ≤ the player's reached tier. Price + tags drive
 // the within-tier sort and the chip re-roll filter.
 //
-// Display fields for the Mamikos-style result card (KosCard.jsx):
-//   type    'Campur' | 'Putri' | 'Putra' — the badge over the photo
-//   rating  number shown next to the star
-//   photo   optional image URL (public/ path); null → a gradient placeholder
-//   url     the Mamikos listing link the card opens; replace these with the real
-//           listing URLs later (default points at the homepage as a safe stub)
-const MAMIKOS_URL = 'https://mamikos.com'
 const LISTINGS = Object.freeze([
-  { name: 'Kos Sederhana Berkah', area: 'Seturan', price: 500000, tier: 0, type: 'Campur', rating: 4.2, photo: null, url: MAMIKOS_URL, tags: ['wifi'] },
-  { name: 'Kos Pak Budi', area: 'Gejayan', price: 550000, tier: 0, type: 'Putra', rating: 4.0, photo: null, url: MAMIKOS_URL, tags: ['parkir', 'dapur'] },
-  { name: 'Kos Anggrek Dekat Kampus', area: 'Caturtunggal', price: 600000, tier: 1, type: 'Putri', rating: 4.4, photo: null, url: MAMIKOS_URL, tags: ['kampus', 'wifi'] },
-  { name: 'Kos Mawar Asri', area: 'Condongcatur', price: 700000, tier: 1, type: 'Putri', rating: 4.5, photo: null, url: MAMIKOS_URL, tags: ['wifi', 'kampus', 'parkir'] },
-  { name: 'Kos Harmoni', area: 'Maguwoharjo', price: 750000, tier: 1, type: 'Campur', rating: 4.3, photo: null, url: MAMIKOS_URL, tags: ['ac', 'km_dalam', 'dapur'] },
-  { name: 'Kos Putri Melati', area: 'Sleman', price: 850000, tier: 2, type: 'Putri', rating: 4.6, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam'] },
-  { name: 'Kos Eksklusif Cendana', area: 'Depok', price: 1500000, tier: 2, type: 'Campur', rating: 4.7, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam', 'parkir', 'dapur'] },
-  { name: 'Kos Singgahsini Premium', area: 'Babarsari', price: 1800000, tier: 3, type: 'Campur', rating: 4.9, photo: null, url: MAMIKOS_URL, tags: ['ac', 'wifi', 'km_dalam', 'kampus', 'parkir', 'dapur'] },
+  { name: 'Kost Anugrah', area: 'Depok Sleman', price: 500000, tier: 0, type: 'Putri', rating: 4.5, photo: 'https://static.mamikos.com/uploads/cache/data/style/2026-04-10/ogZ816wU-540x720.jpg', url: 'https://mamikos.com/room/kost-kabupaten-sleman-kost-putri-murah-kost-anugrah-depok-sleman-2?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Apik Pink Tipe A', area: 'Maguwoharjo Yogyakarta', price: 632200, tier: 0, type: 'Putri', rating: 4.8, photo: 'https://static.mamikos.com/uploads/cache/data/style/2023-11-08/zWQcDGbD-540x720.jpg', url: 'https://mamikos.com/room/kost-sleman-kost-putri-murah-kost-apik-pink-tipe-a-maguwoharjo-yogyakarta-2?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Apik Cengkir Gading House', area: 'Yogyakarta', price: 820000, tier: 1, type: 'Putra', rating: 4.9, photo: 'https://static.mamikos.com/uploads/cache/data/style/2025-03-24/4onYBJlb-540x720.jpg', url: 'https://mamikos.com/room/kost-kabupaten-sleman-kost-putra-murah-kost-apik-cengkir-gading-house-tipe-c-yogyakarta?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Singgahsini Kanaka Allana', area: 'Sinduharjo Yogyakarta', price: 975000, tier: 1, type: 'Putra', rating: 4.6, photo: 'https://static.mamikos.com/uploads/cache/data/style/2021-01-25/u7DsKJ9D-540x720.jpg', url: 'https://mamikos.com/room/kost-sleman-kost-putra-eksklusif-kost-singgahsini-kanaka-allana-tipe-a-sinduharjo-yogyakarta?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Singgahsini Oemah Rajawali', area: 'Yogyakarta', price: 1025000, tier: 1, type: 'Putri', rating: 5.0, photo: 'https://static.mamikos.com/uploads/cache/data/style/2025-09-23/pfFnN3X4-540x720.jpg', url: 'https://mamikos.com/room/kost-kabupaten-sleman-kost-putri-eksklusif-kost-singgahsini-oemah-rajawali-tipe-c-yogyakarta-2?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Singgahsini Alpukat Rania', area: 'Condongcatur', price: 1248000, tier: 2, type: 'Putri', rating: 4.9, photo: 'https://static.mamikos.com/uploads/cache/data/style/2022-02-24/C5YMxcYB-540x720.jpg', url: 'https://mamikos.com/room/kost-sleman-kost-putri-eksklusif-kost-singgahsini-alpukat-rania-tipe-a-condong-catur-yogyakarta-1?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Singgahsini Pondok Garini Syariah', area: 'Yogyakarta', price: 1775000, tier: 2, type: 'Campur', rating: 4.6, photo: 'https://static.mamikos.com/uploads/cache/data/style/2023-09-11/EF4KNLUE-540x720.jpg', url: 'https://mamikos.com/room/kost-kabupaten-sleman-kost-campur-eksklusif-kost-singgahsini-pondok-garini-syariah-tipe-d-yogyakarta?redirection_source=list%20kos%20result', tags: [] },
+  { name: 'Kost Singgahsini Green Zee Exclusive', area: 'Condongcatur', price: 2610000, tier: 3, type: 'Campur', rating: 4.5, photo: 'https://static.mamikos.com/uploads/cache/data/style/2026-04-07/lo87x1PS-540x720.jpg', url: 'https://mamikos.com/room/kost-kabupaten-sleman-kost-campur-eksklusif-kost-singgahsini-green-zee-exclusive-tipe-a-condong-catur-yogyakarta-2?redirection_source=list%20kos%20result', tags: [] },
 ])
 
 // Human labels for facility tag ids, used by the result card's facility line.

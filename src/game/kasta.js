@@ -13,9 +13,9 @@
 // constants.js re-exports the derived KASTA_THRESHOLDS for legacy callers.
 export const KASTA_METERS = Object.freeze({
   KIPAS_ANGIN: 0, // tutorial-safe start
-  AC_STANDAR: 100, // → lantai licin (≈1 min in, so players actually SEE tier 2)
-  SINGGAHSINI: 280, // → vacuum chaser
-  KOS_IMPIAN: 500, // → endless Mode Kos Impian gate
+  AC_STANDAR: 75, // → lantai licin
+  SINGGAHSINI: 200, // → vacuum chaser
+  KOS_IMPIAN: 350, // → endless Mode Kos Impian gate
 })
 
 export const KASTA_DEFS = Object.freeze([

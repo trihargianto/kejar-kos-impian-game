@@ -8,7 +8,6 @@
 // run's dream kos (name + price), and a CTA + link back to the game/listing.
 import { COLORS, FONTS } from '../theme.js'
 import { getRank } from './score.js'
-import { formatPrice } from './dreamKos.js'
 
 // Story canvas size. Fixed regardless of device — the share asset is always the
 // same 9:16 IG-Story resolution.
@@ -21,7 +20,7 @@ export const GAME_URL = 'https://kejar-kos-impian.vercel.app'
 // Draw the full card onto a provided 2D context sized SHARE_W×SHARE_H.
 // Exported on its own so it's unit-testable against a mock ctx without needing
 // a real canvas / toBlob.
-export function drawShareCard(ctx, { dist = 0, score = 0, dreamKos } = {}) {
+export function drawShareCard(ctx, { dist = 0, score = 0, logo } = {}) {
   const W = SHARE_W
   const H = SHARE_H
   const cx = W / 2
@@ -35,94 +34,36 @@ export function drawShareCard(ctx, { dist = 0, score = 0, dreamKos } = {}) {
 
   ctx.textAlign = 'center'
 
-  // ── Title ──
-  ctx.fillStyle = COLORS.gameoverTitle
-  ctx.font = `bold 96px ${FONTS.mono}`
-  ctx.fillText('KEJAR', cx, 260)
-  ctx.fillText('KOS IMPIAN', cx, 370)
-
-  // ── Character glyph (placeholder runner — swapped for art in Step 4) ──
-  // A simple red capsule + eye, echoing the in-game player block.
-  ctx.fillStyle = COLORS.player
-  ctx.beginPath()
-  ctx.roundRect(cx - 90, 470, 180, 250, 40)
-  ctx.fill()
-  ctx.fillStyle = COLORS.playerEye
-  ctx.beginPath()
-  ctx.arc(cx + 30, 555, 28, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = COLORS.playerPupil
-  ctx.beginPath()
-  ctx.arc(cx + 42, 555, 13, 0, Math.PI * 2)
-  ctx.fill()
+  // ── Logo (ui_logo.png, 1500×600 → rendered at 900×360, centered) ──
+  const logoW = 900
+  const logoH = 360
+  const logoY = 220
+  if (logo) {
+    ctx.drawImage(logo, cx - logoW / 2, logoY, logoW, logoH)
+  }
 
   // ── Jarak (the headline brag number) ──
   ctx.fillStyle = COLORS.gameoverDist
-  ctx.font = `bold 180px ${FONTS.mono}`
-  ctx.fillText(`${dist}m`, cx, 920)
+  ctx.font = `bold 240px ${FONTS.mono}`
+  ctx.fillText(`${dist}m`, cx, 860)
 
   ctx.fillStyle = COLORS.faint
-  ctx.font = `40px ${FONTS.mono}`
-  ctx.fillText(`SKOR ${Math.floor(score)}`, cx, 985)
+  ctx.font = `52px ${FONTS.mono}`
+  ctx.fillText(`SKOR ${Math.floor(score)}`, cx, 960)
 
   // ── Pangkat komedi ──
   ctx.fillStyle = COLORS.white
-  ctx.font = `bold 54px ${FONTS.sans}`
+  ctx.font = `bold 68px ${FONTS.sans}`
   ctx.fillText(getRank(dist), cx, 1080)
-
-  // ── Dream kos card ──
-  if (dreamKos) {
-    const cardX = 90
-    const cardY = 1180
-    const cardW = W - 180
-    const cardH = 380
-    ctx.fillStyle = 'rgba(241,196,15,0.12)'
-    ctx.beginPath()
-    ctx.roundRect(cardX, cardY, cardW, cardH, 32)
-    ctx.fill()
-    ctx.strokeStyle = COLORS.gold
-    ctx.lineWidth = 4
-    ctx.beginPath()
-    ctx.roundRect(cardX, cardY, cardW, cardH, 32)
-    ctx.stroke()
-
-    ctx.fillStyle = COLORS.faint
-    ctx.font = `40px ${FONTS.mono}`
-    ctx.fillText('🏠 KOS IMPIANKU', cx, cardY + 80)
-
-    ctx.fillStyle = COLORS.white
-    ctx.font = `bold 56px ${FONTS.sans}`
-    ctx.fillText(truncate(ctx, dreamKos.name, cardW - 80), cx, cardY + 170)
-
-    ctx.fillStyle = COLORS.gold
-    ctx.font = `bold 52px ${FONTS.mono}`
-    ctx.fillText(formatPrice(dreamKos.price), cx, cardY + 250)
-
-    if (dreamKos.area) {
-      ctx.fillStyle = COLORS.faint
-      ctx.font = `38px ${FONTS.mono}`
-      ctx.fillText(`${dreamKos.area} · ada di Mamikos`, cx, cardY + 320)
-    }
-  }
 
   // ── CTA + link ──
   ctx.fillStyle = COLORS.white
-  ctx.font = `bold 52px ${FONTS.sans}`
-  ctx.fillText('Berani ngalahin skor gue?', cx, 1720)
+  ctx.font = `bold 60px ${FONTS.sans}`
+  ctx.fillText('Berani ngalahin skor gue?', cx, 1680)
 
   ctx.fillStyle = COLORS.gold
-  ctx.font = `bold 44px ${FONTS.mono}`
-  ctx.fillText(GAME_URL.replace(/^https?:\/\//, ''), cx, 1800)
-}
-
-// Shrink text with an ellipsis until it fits maxW at the current font.
-function truncate(ctx, text, maxW) {
-  if (ctx.measureText(text).width <= maxW) return text
-  let t = text
-  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) {
-    t = t.slice(0, -1)
-  }
-  return t + '…'
+  ctx.font = `bold 52px ${FONTS.mono}`
+  ctx.fillText(GAME_URL.replace(/^https?:\/\//, ''), cx, 1780)
 }
 
 // Render to an offscreen canvas and resolve { blob, dataUrl }. The caller wires
@@ -138,16 +79,27 @@ export function generateShareImage(result) {
       reject(new Error('2D canvas unavailable'))
       return
     }
-    drawShareCard(ctx, result)
-    const dataUrl = canvas.toDataURL('image/png')
-    if (!canvas.toBlob) {
-      // Fallback: derive a blob from the data URL.
-      resolve({ blob: dataUrlToBlob(dataUrl), dataUrl })
-      return
+    const logo = new Image()
+    logo.onload = () => {
+      drawShareCard(ctx, { ...result, logo })
+      const dataUrl = canvas.toDataURL('image/png')
+      if (!canvas.toBlob) {
+        resolve({ blob: dataUrlToBlob(dataUrl), dataUrl })
+        return
+      }
+      canvas.toBlob((blob) => resolve({ blob, dataUrl }), 'image/png')
     }
-    canvas.toBlob((blob) => {
-      resolve({ blob, dataUrl })
-    }, 'image/png')
+    logo.onerror = () => {
+      // Draw without logo if image fails to load.
+      drawShareCard(ctx, result)
+      const dataUrl = canvas.toDataURL('image/png')
+      if (!canvas.toBlob) {
+        resolve({ blob: dataUrlToBlob(dataUrl), dataUrl })
+        return
+      }
+      canvas.toBlob((blob) => resolve({ blob, dataUrl }), 'image/png')
+    }
+    logo.src = '/sprites/ui_logo.png'
   })
 }
 

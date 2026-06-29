@@ -13,6 +13,8 @@ import { getRank } from './systems/score.js'
 // Pinned to the top safe area, clear of the reveal card + chips + retry prompt
 // the scene draws lower. Every handler stopPropagation so a tap here doesn't
 // fall through to the container's tap-to-retry.
+const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share
+
 export function ShareButtons({ result }) {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
@@ -41,10 +43,9 @@ export function ShareButtons({ result }) {
       setBusy(true)
       setNote(null)
       try {
-        const { blob } = await generateShareImage({
+        const { blob, dataUrl } = await generateShareImage({
           dist: result.dist,
           score: result.score,
-          dreamKos,
         })
         const file = new File([blob], 'kejar-kos-impian.png', { type: 'image/png' })
         // Prefer native share-with-image where supported (mobile). Fall back to
@@ -54,7 +55,10 @@ export function ShareButtons({ result }) {
         } else if (navigator.share) {
           await navigator.share({ text: shareText, title: 'Kejar Kos Impian' })
         } else {
-          setNote('Browser tidak mendukung berbagi. Coba screenshot manual.')
+          const a = document.createElement('a')
+          a.href = dataUrl
+          a.download = 'kejar-kos-impian.png'
+          a.click()
         }
       } catch (err) {
         // AbortError = user cancelled the share sheet; not worth a message.
@@ -81,9 +85,15 @@ export function ShareButtons({ result }) {
       }}
     >
       <div style={{ display: 'flex', gap: 10, pointerEvents: 'auto' }}>
-        <ShareBtn onPress={onShare} disabled={busy} primary>
-          {busy ? '…' : '📤 Bagikan'}
-        </ShareBtn>
+        {canNativeShare ? (
+          <ShareBtn onPress={onShare} disabled={busy} primary>
+            {busy ? '…' : '📤 Bagikan'}
+          </ShareBtn>
+        ) : (
+          <ShareBtn onPress={onShare} disabled={busy} primary>
+            {busy ? '…' : '⬇️ Unduh Gambar'}
+          </ShareBtn>
+        )}
       </div>
       {note && (
         <div

@@ -15,7 +15,7 @@ export const SHARE_W = 1080
 export const SHARE_H = 1920
 
 // Where "berani ngalahin skor gue?" sends people. Swapped per deploy.
-export const GAME_URL = 'https://kejar-kos-impian.vercel.app'
+export const GAME_URL = 'https://kejar-kos-impian-game.vercel.app'
 
 // Draw the full card onto a provided 2D context sized SHARE_W×SHARE_H.
 // Exported on its own so it's unit-testable against a mock ctx without needing

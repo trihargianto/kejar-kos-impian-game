@@ -85,15 +85,15 @@ export class StartScene {
       y += Math.round(98 * S)
     }
 
-    // ── Tagline (3 lines) ──
-    // Use a TOP baseline so each line is placed by its top edge — with the
-    // default alphabetic baseline the first line's ascenders rose above `y` and
-    // collided with the logo, clipping the text. Reset to alphabetic after.
+    // ── Tagline (1 line) ──
+    // Use a TOP baseline so the line is placed by its top edge — with the
+    // default alphabetic baseline it would rise above `y` and collide with the
+    // logo, clipping the text. Reset to alphabetic after.
     ctx.fillStyle = COLORS.ink
     ctx.font = `${Math.round(14 * S)}px ${FONTS.sans}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    const taglineLines = ['Kos impian menanti!', 'Lari sekencang mungkin,', 'raih kos terbaikmu!']
+    const taglineLines = ['Kos impian menanti — lari sekencang mungkin!']
     const lineH = Math.round(20 * S)
     taglineLines.forEach((t, i) => ctx.fillText(t, cx, y + i * lineH))
     ctx.textBaseline = 'alphabetic'

@@ -725,9 +725,9 @@ export default function GameCanvas() {
 
       {inPlay && groundH > 0 && (
         // Control cluster (bottom-right): a neat 2×2 grid of equal-size buttons
-        // with one uniform gap. JUMP is bottom-right (thumb home), SLIDE bottom-
-        // left, DASH top-right, THROW top-left. The whole grid scales to fit the
-        // ground strip (groundH) so it never pokes up into the running area.
+        // with one uniform gap. THROW top-left, DASH bottom-left, JUMP top-right,
+        // SLIDE bottom-right. The whole grid scales to fit the ground strip
+        // (groundH) so it never pokes up into the running area.
         <div
           style={{
             position: 'absolute',
@@ -745,7 +745,7 @@ export default function GameCanvas() {
             pointerEvents: 'none',
           }}
         >
-          {/* Grid order: row 1 = THROW, DASH · row 2 = SLIDE, JUMP. On desktop
+          {/* Grid order: row 1 = THROW, JUMP · row 2 = DASH, SLIDE. On desktop
               each button shows its keyboard shortcut so mouse users discover the
               keyboard controls. */}
           <ActionButton
@@ -755,6 +755,12 @@ export default function GameCanvas() {
             disabled={sandals <= 0}
             size={BTN_SIZE}
             onPress={(e) => pressAction('Button:Throw', e)}
+          />
+          <ActionButton
+            label="JUMP"
+            size={BTN_SIZE}
+            keyHint={isDesktop ? KEY_HINT.jump : null}
+            onPress={(e) => pressAction('Button:Jump', e)}
           />
           <ActionButton
             label="DASH"
@@ -770,12 +776,6 @@ export default function GameCanvas() {
             keyHint={isDesktop ? KEY_HINT.slide : null}
             onPress={(e) => holdAction('Button:Slide', e)}
             onRelease={(e) => releaseAction('Button:Slide', e)}
-          />
-          <ActionButton
-            label="JUMP"
-            size={BTN_SIZE}
-            keyHint={isDesktop ? KEY_HINT.jump : null}
-            onPress={(e) => pressAction('Button:Jump', e)}
           />
         </div>
       )}

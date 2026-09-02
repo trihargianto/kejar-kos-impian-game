@@ -47,6 +47,11 @@ export const TUTORIALS = Object.freeze({
         title: '⚡ DASH',
         body: ['Tekan "DASH" untuk mendobrak pintu yang bisa dihancurkan.'],
       },
+      {
+        media: '/tutorials/sandal.mp4',
+        title: '🩴 THROW',
+        body: ['Tekan "THROW" untuk melempar sandal & menghancurkan obstacle di depanmu.'],
+      },
     ],
   },
   sandal: {

@@ -30,6 +30,9 @@ export class AudioSystem {
     this._howls = new Map() // id → Howl, built lazily from MANIFEST.audio
     this._music = null
     this._musicId = null
+    // True while music is deliberately paused (pause menu, tutorial card,
+    // backgrounded tab) — see pauseMusic()/resumeMusic()/unlock().
+    this._musicPaused = false
     // Initial SFX on/off from saved settings.
     this.enabled = loadSettings().sfx
     // Howler's global mute mirrors `enabled` so a disabled run is truly silent
@@ -49,8 +52,16 @@ export class AudioSystem {
     const ctx = Howler.ctx
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
     // If home music was requested while suspended, Howler may have dropped the
-    // play; re-issue it now that the context is live.
-    if (this._musicId && this._music && !this._music.playing(this._musicVoice)) {
+    // play; re-issue it now that the context is live. Skip if the game
+    // deliberately paused it (pause menu, tutorial card, backgrounded tab) —
+    // otherwise an unrelated tap (e.g. fumbling at a frozen/paused screen)
+    // would force music back on against the current pause state.
+    if (
+      !this._musicPaused &&
+      this._musicId &&
+      this._music &&
+      !this._music.playing(this._musicVoice)
+    ) {
       this._musicVoice = this._music.play()
     }
   }
@@ -298,6 +309,7 @@ export class AudioSystem {
   }
 
   _musicPlay(id) {
+    this._musicPaused = false
     // Already looping this track? Leave it (avoids a restart on re-entry).
     if (this._music && this._musicId === id) {
       // ...unless the context was suspended at boot and the play got dropped —
@@ -323,11 +335,13 @@ export class AudioSystem {
   }
 
   pauseMusic() {
+    this._musicPaused = true
     if (!this._music) return
     this._music.pause(this._musicVoice)
   }
 
   resumeMusic() {
+    this._musicPaused = false
     if (!this._music) return
     if (!this._music.playing(this._musicVoice)) this._musicVoice = this._music.play()
   }

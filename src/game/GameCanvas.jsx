@@ -46,6 +46,9 @@ export default function GameCanvas() {
   const containerRef = useRef(null)
   const gameRef = useRef(null)
   const enterGameRef = useRef(null)
+  // Live mirror of `inPlay`, readable from listeners that run outside React's
+  // render (e.g. the visibilitychange handler) without a stale closure.
+  const inPlayRef = useRef(false)
   const [ripples, setRipples] = useState([])
   const rippleId = useRef(0)
   // Action buttons only matter during play; throw also needs ammo, dash a cooldown.
@@ -151,7 +154,10 @@ export default function GameCanvas() {
 
     // Drive the on-screen buttons off the same event bus gameplay already uses.
     const offs = [
-      game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => setInPlay(scene === 'play')),
+      game.events.on(EVENTS.SCENE_CHANGE, ({ scene }) => {
+        inPlayRef.current = scene === 'play'
+        setInPlay(inPlayRef.current)
+      }),
       // Capture the run summary at game over (drives the share card); clear it
       // when leaving the game-over scene so the share buttons unmount.
       game.events.on(EVENTS.GAME_OVER, ({ dist, coins, score }) =>
@@ -229,10 +235,32 @@ export default function GameCanvas() {
     const ro = new ResizeObserver(refit)
     if (containerRef.current) ro.observe(containerRef.current)
 
+    // Backgrounding (tab switch, app minimize) throttles rAF but does NOT stop
+    // WebAudio/Howler on its own — music would otherwise keep playing behind a
+    // minimized webview, and on some webviews rAF keeps ticking too. On hide:
+    // pause music, and — ONLY during an actual run — pause the game too (same
+    // setPaused the pause button uses, surfacing the normal pause menu on
+    // return instead of silently dropping the player back into moving
+    // traffic). setPaused freezes ALL scene updates (Game._loop gates on it),
+    // including the start/game-over screens' own tap handling — calling it
+    // there would freeze a screen with no pause menu to escape through, so
+    // it's scoped to inPlay. Only resume music on return if the run wasn't
+    // already paused for another reason (pause menu, tutorial card).
+    const onVisibility = () => {
+      if (document.hidden) {
+        game.audio?.pauseMusic()
+        if (inPlayRef.current) game.setPaused(true)
+      } else if (!game.paused) {
+        game.audio?.resumeMusic()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(loadGuard)
       ro.disconnect()
+      document.removeEventListener('visibilitychange', onVisibility)
       offs.forEach((off) => off())
       game.destroy()
       gameRef.current = null

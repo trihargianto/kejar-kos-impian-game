@@ -22,35 +22,32 @@ export const TUTORIALS = Object.freeze({
       {
         media: null,
         title: 'KEJAR KOS IMPIAN',
-        body: [
-          'Sprint menuju kos impianmu!',
-          'Tugasmu adalah lari sejauh mungkin dan kumpulkan koin untuk mengejar Kos Impianmu',
-        ],
+        body: ['Lari sejauh mungkin, kumpulkan koin, kejar kos impianmu!'],
       },
       {
         media: '/tutorials/intro-jump.mp4',
         title: '▶ JUMP',
-        body: ['Tekan "JUMP" untuk lompat melewati ember & kucing di lantai.'],
+        body: ['Lompati rintangan di lantai.'],
       },
       {
         media: '/tutorials/intro-double-jump.mp4',
         title: '▶▶ DOUBLE JUMP',
-        body: ['Tekan "JUMP" sekali lagi di udara untuk jangkau rintangan lebih tinggi.'],
+        body: ['Tekan sekali lagi di udara.'],
       },
       {
         media: '/tutorials/intro-slide.mp4',
         title: '⬇ SLIDE',
-        body: ['Tekan "SLIDE" untuk nunduk supaya lolos dari jemuran & barang terbang.'],
+        body: ['Nunduk lolos dari rintangan atas.'],
       },
       {
         media: '/tutorials/intro-dash.mp4',
         title: '⚡ DASH',
-        body: ['Tekan "DASH" untuk mendobrak pintu yang bisa dihancurkan.'],
+        body: ['Dobrak pintu yang bisa dihancurkan.'],
       },
       {
         media: '/tutorials/sandal.mp4',
         title: '🩴 THROW',
-        body: ['Tekan "THROW" untuk melempar sandal & menghancurkan obstacle di depanmu.'],
+        body: ['Lempar sandal, hancurkan rintangan di depan.'],
       },
     ],
   },

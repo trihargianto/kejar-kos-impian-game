@@ -7,10 +7,10 @@
 // prompt each frame via check(dist) and renders/floats whatever comes back.
 
 export const PROMPTS = Object.freeze([
-  { at: 100, text: 'Kos impian makin keliatan! Gas terus!' },
-  { at: 250, text: 'Setengah jalan ke kos idaman — jangan berhenti!' },
-  { at: 400, text: 'Dikit lagi sampai kos impian! Ayo!' },
-  { at: 500, text: 'Kos impian di depan mata! Sprint pamungkas!' },
+  { at: 100, text: 'Gas terus!' },
+  { at: 250, text: 'Setengah jalan!' },
+  { at: 400, text: 'Dikit lagi!' },
+  { at: 500, text: 'Sprint pamungkas!' },
 ])
 
 export class PromptDirector {
